@@ -6,7 +6,12 @@ from typing import Any, Callable
 
 import httpx
 
+from brain_client import brain_enabled, call_brain
 from db import (
+    clear_pending_order,
+    get_pending_order_snapshot,
+    get_recent_interactions,
+    get_recent_meds,
     log_alert,
     log_interaction,
     log_order_request,
@@ -57,7 +62,7 @@ def has_order_intent(message: str) -> bool:
 
 
 def _vision_service_url() -> str:
-    return os.getenv("VISION_SERVICE_URL", "http://127.0.0.1:5000").rstrip("/")
+    return os.getenv("VISION_SERVICE_URL", "http://127.0.0.1:5001").rstrip("/")
 
 
 def _twilio_auth() -> tuple[str, str] | None:
@@ -169,6 +174,60 @@ async def place_mock_or_live_order(
     send_message(from_number, confirmation, base_url)
 
 
+async def _route_photo_through_brain(
+    *,
+    body: str,
+    from_number: str,
+    base_url: str,
+    send_message: SendMessage,
+    result: dict[str, Any],
+    med_log_id: int,
+) -> bool:
+    if not brain_enabled() or not from_number:
+        return False
+    context = {
+        "patient_name": os.getenv("PATIENT_NAME", "the patient"),
+        "from_number": from_number,
+        "recent_meds": get_recent_meds(limit=5),
+        "interactions": get_recent_interactions(limit=10),
+        "pending_order": get_pending_order_snapshot(from_number),
+        "photo_result": result,
+    }
+    reply = await call_brain(from_number, body or "(photo only)", context)
+    if reply is None or not reply.reply:
+        return False
+    log_interaction(body or "Photo message", reply.reply, "brain_photo")
+    for action in reply.actions:
+        kind = action.type
+        args = action.args or {}
+        if kind == "request_refill":
+            await place_mock_or_live_order(
+                from_number=from_number,
+                medication=str(args.get("medication") or result.get("name") or "Unknown"),
+                dosage=str(args.get("dosage") or result.get("dosage") or "unknown dosage"),
+                med_log_id=med_log_id,
+                reason=f"brain photo action; body={body!r}",
+                base_url=base_url,
+                send_message=send_message,
+            )
+        elif kind == "set_pending_order":
+            set_pending_order(
+                from_number,
+                med_log_id,
+                str(args.get("medication") or result.get("name") or "Unknown"),
+                str(args.get("dosage") or result.get("dosage") or "unknown dosage"),
+            )
+        elif kind == "clear_pending_order":
+            clear_pending_order(from_number)
+        elif kind == "create_alert":
+            log_alert(
+                str(args.get("alert_type") or "brain_alert"),
+                str(args.get("message") or "Brain raised an alert."),
+            )
+    send_message(from_number, reply.reply, base_url)
+    return True
+
+
 async def process_photo_message(
     media_url: str,
     body: str,
@@ -189,6 +248,16 @@ async def process_photo_message(
         result = await analyze_medication_with_fallback(image_bytes, mime_type)
         med_log_id = log_photo_medication(result)
         record_photo(from_number, image_sha256, med_log_id)
+
+        if await _route_photo_through_brain(
+            body=body,
+            from_number=from_number,
+            base_url=base_url,
+            send_message=send_message,
+            result=result,
+            med_log_id=med_log_id,
+        ):
+            return
 
         med_name = str(result.get("name") or "Unknown")
         dosage = str(result.get("dosage") or "unknown dosage")

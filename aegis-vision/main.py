@@ -1,4 +1,5 @@
 import base64
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -10,10 +11,12 @@ from gemini_client import analyze_image_bytes
 
 load_dotenv()
 
+VISION_PORT = int(os.getenv("VISION_PORT", "5001"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("[aegis-vision] starting up on port 5000")
+    print(f"[aegis-vision] starting up on port {VISION_PORT}")
     yield
     print("[aegis-vision] shutting down")
 
@@ -78,4 +81,4 @@ async def analyze_base64(body: AnalyzeRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=False)
+    uvicorn.run("main:app", host="127.0.0.1", port=VISION_PORT, reload=False)

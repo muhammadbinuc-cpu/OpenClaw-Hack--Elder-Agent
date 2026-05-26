@@ -264,5 +264,34 @@ def record_photo(from_number: str, image_sha256: str, med_log_id: int) -> None:
         )
 
 
+def get_recent_meds(limit: int = 5) -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT timestamp, med_name, dosage, source FROM med_logs "
+            "ORDER BY timestamp DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [row_to_dict(r) for r in rows]
+
+
+def get_recent_interactions(limit: int = 10) -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT timestamp, patient_message, agent_response, action_taken "
+            "FROM interactions ORDER BY timestamp DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return list(reversed([row_to_dict(r) for r in rows]))
+
+
+def get_pending_order_snapshot(from_number: str) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT medication, dosage, timestamp FROM pending_orders WHERE from_number = ?",
+            (from_number,),
+        ).fetchone()
+        return row_to_dict(row) if row else None
+
+
 def row_to_dict(row: sqlite3.Row) -> dict:
     return {key: row[key] for key in row.keys()}

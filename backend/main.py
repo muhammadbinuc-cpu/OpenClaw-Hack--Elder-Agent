@@ -15,13 +15,19 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
 from agent import AgentDecision, interpret_patient_message
+from brain_client import BrainReply, brain_enabled, call_brain
 from db import (
     clear_pending_order,
     connect,
+    get_pending_order_snapshot,
+    get_recent_interactions,
+    get_recent_meds,
     init_db,
+    log_alert,
     log_interaction,
     pop_pending_order,
     row_to_dict,
+    set_pending_order,
     utc_now,
 )
 from photo_flow import place_mock_or_live_order, process_photo_message
@@ -230,6 +236,14 @@ async def whatsapp_webhook(
             return _twiml(reply)
         clear_pending_order(from_number)
 
+    if brain_enabled() and from_number:
+        brain_reply = await call_brain(from_number, body, patient_context(from_number))
+        if brain_reply is not None and brain_reply.reply:
+            log_interaction(body, brain_reply.reply, "brain")
+            _execute_brain_actions(from_number, brain_reply.actions, background_tasks, base_url)
+            background_tasks.add_task(send_whatsapp_voice_note, from_number, brain_reply.reply, base_url)
+            return _twiml(brain_reply.reply)
+
     decision = interpret_patient_message(body, PATIENT_NAME)
     log_interaction(body, decision.spoken_response, decision.action)
     execute_text_action(from_number, body, decision)
@@ -263,6 +277,69 @@ async def order_requests() -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute("SELECT * FROM order_requests ORDER BY timestamp DESC").fetchall()
         return [row_to_dict(row) for row in rows]
+
+
+def patient_context(from_number: str, photo_result: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        "patient_name": PATIENT_NAME,
+        "from_number": from_number,
+        "recent_meds": get_recent_meds(limit=5),
+        "interactions": get_recent_interactions(limit=10),
+        "pending_order": get_pending_order_snapshot(from_number) if from_number else None,
+        "photo_result": photo_result,
+    }
+
+
+def _execute_brain_actions(from_number: str, actions: list, background_tasks: BackgroundTasks, base_url: str) -> None:
+    for action in actions:
+        kind = action.type
+        args = action.args or {}
+        if kind == "request_refill":
+            medication = str(args.get("medication") or "Unknown")
+            dosage = str(args.get("dosage") or "unknown dosage")
+            background_tasks.add_task(
+                place_mock_or_live_order,
+                from_number=from_number,
+                medication=medication,
+                dosage=dosage,
+                med_log_id=None,
+                reason=f"brain action: {kind}",
+                base_url=base_url,
+                send_message=send_whatsapp_message,
+            )
+        elif kind == "log_medication":
+            with connect() as conn:
+                conn.execute(
+                    "INSERT INTO med_logs (timestamp, med_name, dosage, purpose, confidence, source) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        utc_now(),
+                        str(args.get("name") or "Medication"),
+                        str(args.get("dosage") or "Unknown"),
+                        str(args.get("purpose") or "Brain-decided log"),
+                        "brain",
+                        "voice",
+                    ),
+                )
+        elif kind == "set_pending_order":
+            medication = str(args.get("medication") or "Unknown")
+            dosage = str(args.get("dosage") or "unknown dosage")
+            set_pending_order(from_number, 0, medication, dosage)
+        elif kind == "clear_pending_order":
+            clear_pending_order(from_number)
+        elif kind == "create_alert":
+            log_alert(
+                str(args.get("alert_type") or "brain_alert"),
+                str(args.get("message") or "Brain raised an alert."),
+            )
+        else:
+            print(f"[brain] unknown action type: {kind}, skipping")
+
+
+@app.get("/api/context/{from_number}")
+async def api_context(from_number: str) -> dict[str, Any]:
+    cleaned = from_number.replace("whatsapp:", "")
+    return patient_context(cleaned)
 
 
 @app.get("/api/stats")
