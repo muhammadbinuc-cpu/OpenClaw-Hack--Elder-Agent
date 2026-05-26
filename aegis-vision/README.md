@@ -47,10 +47,9 @@ curl -X POST http://localhost:5000/analyze-base64 \
 
 ### Response (both analyze endpoints)
 
-Prescription detected:
+Valid prescription (HTTP 200):
 ```json
 {
-  "is_prescription": true,
   "medication": "Lisinopril",
   "dosage": "10mg",
   "quantity": 3,
@@ -60,16 +59,10 @@ Prescription detected:
 }
 ```
 
-Not a prescription:
+Not a prescription (HTTP 400):
 ```json
 {
-  "is_prescription": false,
-  "medication": null,
-  "dosage": null,
-  "quantity": 0,
-  "refill_needed": false,
-  "confidence": "high",
-  "raw_analysis": "Full Gemini response for debugging"
+  "error": "not a proper prescription"
 }
 ```
 

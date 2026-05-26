@@ -29,7 +29,8 @@ Aegis is an AI agent system that helps elderly people with dementia manage their
 
 ### Piece 2 — Gemini Vision API (Farill) ← THIS SERVICE
 - Receives image (multipart or base64 JSON)
-- Sends to Gemini 2.0 Flash Vision API
+- Sends to Gemini 2.5 Flash Vision API
+- Checks if image is a valid prescription — if not, returns error
 - Extracts: medication name, dosage, quantity remaining, refill needed
 - Returns structured JSON to Muaaz's backend
 - If Gemini fails → returns hardcoded Lisinopril 10mg fallback
@@ -69,10 +70,9 @@ Aegis is an AI agent system that helps elderly people with dementia manage their
 
 ### Response format (both analyze endpoints)
 
-Prescription detected:
+Valid prescription (HTTP 200):
 ```json
 {
-  "is_prescription": true,
   "medication": "Lisinopril",
   "dosage": "10mg",
   "quantity": 3,
@@ -82,16 +82,10 @@ Prescription detected:
 }
 ```
 
-Not a prescription (random image):
+Not a prescription (HTTP 400):
 ```json
 {
-  "is_prescription": false,
-  "medication": null,
-  "dosage": null,
-  "quantity": 0,
-  "refill_needed": false,
-  "confidence": "high",
-  "raw_analysis": "Full Gemini response text for debugging"
+  "error": "not a proper prescription"
 }
 ```
 
@@ -103,7 +97,7 @@ Not a prescription (random image):
 
 - Python 3.11+
 - FastAPI + uvicorn
-- google-generativeai (Gemini 2.0 Flash)
+- google-genai (Gemini 2.5 Flash)
 - httpx (async HTTP for forwarding to backend)
 - python-dotenv
 - python-multipart
