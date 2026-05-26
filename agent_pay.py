@@ -1,9 +1,9 @@
 """
-agent_pay.py — Agent-to-agent payment on GOAT testnet3 with identity verification.
+agent_pay.py — Agent-to-agent payment on GOAT mainnet with identity verification.
 
 LIVE VERSION: executes real on-chain transfers. Identity check is enforced
 against a hardcoded TRUSTED_AGENTS dict (mock of ERC-8004 registry, since
-the registry isn't deployed on testnet3).
+the registry isn't deployed on mainnet).
 
 Usage:
     from agent_pay import pay, TRUSTED_AGENTS
@@ -37,13 +37,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# GOAT testnet3 config (from MetaMask network settings)
+# GOAT mainnet config (from MetaMask network settings)
 # ──────────────────────────────────────────────────────────────────────────────
 
-GOAT_RPC_URL = "https://rpc.testnet3.goat.network"
-GOAT_CHAIN_ID = 48816
+GOAT_RPC_URL = "https://rpc.goat.network"
+GOAT_CHAIN_ID = 2345
 GOAT_CURRENCY_SYMBOL = "BTC"
-GOAT_EXPLORER_TX_URL = "https://explorer.testnet3.goat.network/tx"
+GOAT_EXPLORER_TX_URL = "https://explorer.goat.network/tx"
 
 AEGIS_PRIVATE_KEY = os.getenv("AEGIS_PRIVATE_KEY")
 
@@ -146,7 +146,7 @@ def verify_agent_identity(wallet: str) -> AgentIdentity:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Native BTC transfer on GOAT testnet3
+# Native BTC transfer on GOAT mainnet
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -199,7 +199,7 @@ def pay(
     sender_private_key: Optional[str] = None,
 ) -> PaymentResult:
     """
-    Agent-to-agent payment on GOAT testnet3.
+    Agent-to-agent payment on GOAT mainnet.
 
     Flow:
         1. Verify to_wallet is in TRUSTED_AGENTS (mock ERC-8004 check)
@@ -236,7 +236,7 @@ def pay(
     # 2. Real on-chain transfer
     try:
         w3 = _get_web3()
-        print(f"[pay] Connected to GOAT testnet3 (chain {GOAT_CHAIN_ID})")
+        print(f"[pay] Connected to GOAT mainnet (chain {GOAT_CHAIN_ID})")
         tx_hash = _execute_native_transfer(
             w3, from_wallet, to_wallet, amount_btc, private_key
         )
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     }
 
     print("=" * 60)
-    print("Aegis pay() — GOAT testnet3 live transfer")
+    print("Aegis pay() — GOAT mainnet live transfer")
     print("=" * 60)
 
     result = pay(
