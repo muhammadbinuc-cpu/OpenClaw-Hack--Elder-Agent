@@ -8,12 +8,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 FALLBACK_RESPONSE = {
-    "medication": "Lisinopril",
-    "dosage": "10mg",
-    "quantity": 3,
-    "refill_needed": True,
+    "error": "gemini_unavailable",
+    "medication": None,
+    "dosage": None,
+    "quantity": 0,
+    "refill_needed": False,
     "confidence": "fallback",
-    "raw_analysis": "Gemini API unavailable — using hardcoded fallback response",
+    "raw_analysis": "Gemini API unavailable — could not analyze image",
 }
 
 GEMINI_PROMPT = (
