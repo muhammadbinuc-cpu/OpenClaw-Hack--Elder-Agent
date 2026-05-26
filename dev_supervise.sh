@@ -43,7 +43,14 @@ cd "$ROOT/backend"
 supervise backend env PYTHONUNBUFFERED=1 python3 main.py
 
 cd "$ROOT/aegis-vision"
-supervise vision  env PYTHONUNBUFFERED=1 python3 main.py
+# Source backend/.env so vision inherits ANTHROPIC_API_KEY without duplicating the secret.
+if [ -f "$ROOT/backend/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/backend/.env"
+  set +a
+fi
+supervise vision env PYTHONUNBUFFERED=1 ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" python3 main.py
 
 cd "$ROOT"
 if command -v ngrok >/dev/null 2>&1; then

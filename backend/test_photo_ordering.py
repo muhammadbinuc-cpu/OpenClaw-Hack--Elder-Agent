@@ -120,11 +120,11 @@ class PhotoFlowTests(unittest.IsolatedAsyncioTestCase):
         try:
             env, call_log, sent_messages = _make_stub_env(
                 analyze_result={
-                    "name": "Unknown",
+                    "medication": "Unknown",
                     "dosage": "Unknown",
-                    "purpose": "Unable to identify",
+                    "quantity": 0,
+                    "refill_needed": False,
                     "confidence": "low",
-                    "warnings": "Ask a caregiver to verify.",
                 },
             )
             await photo_flow.process_photo_message(
@@ -167,11 +167,11 @@ class PhotoFlowTests(unittest.IsolatedAsyncioTestCase):
         try:
             env, call_log, sent_messages = _make_stub_env(
                 analyze_result={
-                    "name": "Lisinopril",
+                    "medication": "Lisinopril",
                     "dosage": "10mg",
-                    "purpose": "Blood pressure",
+                    "quantity": 3,
+                    "refill_needed": True,
                     "confidence": "high",
-                    "warnings": "Demo",
                 },
             )
             await photo_flow.process_photo_message(
@@ -194,11 +194,11 @@ class PhotoFlowTests(unittest.IsolatedAsyncioTestCase):
         try:
             env, call_log, sent_messages = _make_stub_env(
                 analyze_result={
-                    "name": "Lisinopril",
+                    "medication": "Lisinopril",
                     "dosage": "10mg",
-                    "purpose": "Blood pressure",
+                    "quantity": 3,
+                    "refill_needed": True,
                     "confidence": "high",
-                    "warnings": "Demo",
                 },
                 cached_record={"med_log_id": 99},
             )

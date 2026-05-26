@@ -103,11 +103,11 @@ class WebhookTests(unittest.TestCase):
 
     def test_photo_with_caption_returns_immediate_twiml_and_offers_refill(self) -> None:
         self._patch_photo_io(result={
-            "name": "Lisinopril",
+            "medication": "Lisinopril",
             "dosage": "10mg",
-            "purpose": "Blood pressure",
+            "quantity": 3,
+            "refill_needed": True,
             "confidence": "high",
-            "warnings": "Demo",
         })
 
         response = self.client.post(
@@ -126,11 +126,11 @@ class WebhookTests(unittest.TestCase):
 
     def test_yes_after_offer_places_mock_order(self) -> None:
         self._patch_photo_io(result={
-            "name": "Lisinopril",
+            "medication": "Lisinopril",
             "dosage": "10mg",
-            "purpose": "Blood pressure",
+            "quantity": 3,
+            "refill_needed": True,
             "confidence": "high",
-            "warnings": "Demo",
         })
         self.client.post(
             "/webhook/whatsapp",
@@ -158,11 +158,11 @@ class WebhookTests(unittest.TestCase):
 
     def test_explicit_order_caption_skips_pending_and_orders_directly(self) -> None:
         self._patch_photo_io(result={
-            "name": "Lisinopril",
+            "medication": "Lisinopril",
             "dosage": "10mg",
-            "purpose": "Blood pressure",
+            "quantity": 3,
+            "refill_needed": True,
             "confidence": "high",
-            "warnings": "Demo",
         })
         response = self.client.post(
             "/webhook/whatsapp",
@@ -179,11 +179,11 @@ class WebhookTests(unittest.TestCase):
 
     def test_unknown_medication_does_not_offer_or_order(self) -> None:
         self._patch_photo_io(result={
-            "name": "Unknown",
+            "medication": "Unknown",
             "dosage": "Unknown",
-            "purpose": "Could not identify",
+            "quantity": 0,
+            "refill_needed": False,
             "confidence": "low",
-            "warnings": "Ask caregiver",
         })
         self.client.post(
             "/webhook/whatsapp",
@@ -218,11 +218,11 @@ class WebhookTests(unittest.TestCase):
 
     def test_duplicate_photo_within_window_dedupes(self) -> None:
         self._patch_photo_io(result={
-            "name": "Lisinopril",
+            "medication": "Lisinopril",
             "dosage": "10mg",
-            "purpose": "Blood pressure",
+            "quantity": 3,
+            "refill_needed": True,
             "confidence": "high",
-            "warnings": "Demo",
         })
         for _ in range(2):
             self.client.post(
@@ -239,8 +239,8 @@ class WebhookTests(unittest.TestCase):
 
     def test_multi_media_schedules_one_task_per_url(self) -> None:
         payloads = [
-            (b"image-one", {"name": "Lisinopril", "dosage": "10mg", "purpose": "bp", "confidence": "high", "warnings": ""}),
-            (b"image-two", {"name": "Metformin", "dosage": "500mg", "purpose": "sugar", "confidence": "high", "warnings": ""}),
+            (b"image-one", {"medication": "Lisinopril", "dosage": "10mg", "quantity": 3, "refill_needed": True, "confidence": "high"}),
+            (b"image-two", {"medication": "Metformin", "dosage": "500mg", "quantity": 5, "refill_needed": True, "confidence": "high"}),
         ]
         self._patch_photo_io_with_bytes(payloads=payloads)
 

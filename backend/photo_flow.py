@@ -29,12 +29,11 @@ SIMULATE_VISION_PNG = (
     b"\xc0\xf0\x9f\x01\x00\x05\x00\x01\xff\xf6\xdb\xab\xfb\x00\x00\x00\x00IEND\xaeB`\x82"
 )
 SIMULATE_VISION_RESULT: dict[str, Any] = {
-    "name": "Lisinopril",
+    "medication": "Lisinopril",
     "dosage": "10mg",
-    "purpose": "Blood pressure medication. Demo simulator result.",
+    "quantity": 3,
+    "refill_needed": True,
     "confidence": "high",
-    "warnings": "Simulated result for local development only.",
-    "visual_evidence": "Simulator stub — vision service was not called.",
 }
 
 
@@ -48,13 +47,13 @@ ORDER_INTENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 FALLBACK_MEDICATION_RESULT = {
-    "name": "Lisinopril",
+    "medication": "Lisinopril",
     "dosage": "10mg",
-    "purpose": "Blood pressure medication. Ask a caregiver to verify.",
+    "quantity": 3,
+    "refill_needed": True,
     "confidence": "fallback",
-    "warnings": "Vision analysis failed, so this demo fallback should be verified by a caregiver.",
-    "visual_evidence": "Vision service failed before it could inspect the photo.",
 }
+NOT_PRESCRIPTION_RESULT = {"error": "not a proper prescription"}
 
 
 def has_order_intent(message: str) -> bool:
@@ -87,9 +86,16 @@ async def analyze_medication(image_bytes: bytes, mime_type: str) -> dict[str, An
     encoded = base64.b64encode(image_bytes).decode("utf-8")
     async with httpx.AsyncClient(timeout=20.0) as client:
         response = await client.post(
-            f"{_vision_service_url()}/analyze",
+            f"{_vision_service_url()}/analyze-base64",
             json={"image": encoded, "mime_type": mime_type},
         )
+        if response.status_code == 400:
+            try:
+                body = response.json()
+            except Exception:
+                body = {}
+            if isinstance(body, dict) and "error" in body:
+                return NOT_PRESCRIPTION_RESULT.copy()
         response.raise_for_status()
         return response.json()
 
@@ -107,27 +113,55 @@ async def analyze_medication_with_fallback(image_bytes: bytes, mime_type: str) -
 
 def _is_fallback_result(result: dict[str, Any]) -> bool:
     confidence = str(result.get("confidence") or "").lower()
-    raw_analysis = str(result.get("raw_analysis") or "").lower()
-    return confidence == "fallback" or "fallback" in raw_analysis
+    return confidence == "fallback"
+
+
+def _is_not_prescription(result: dict[str, Any]) -> bool:
+    return "error" in result
 
 
 def _is_unknown_medication(med_name: str) -> bool:
     return med_name.strip().lower() in {"", "unknown", "the medication"}
 
 
-def _logged_reply(medication_label: str, result: dict[str, Any]) -> str:
-    if _is_fallback_result(result):
-        return (
-            f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. "
-            "I logged it. Say the name of the medicine and I'll order it."
-        )
+def _medication_name(result: dict[str, Any]) -> str:
+    return str(result.get("medication") or result.get("name") or "Unknown")
+
+
+def _refill_needed(result: dict[str, Any]) -> bool:
+    return bool(result.get("refill_needed"))
+
+
+def _quantity(result: dict[str, Any]) -> int | None:
+    raw = result.get("quantity")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _logged_reply_fallback(medication_label: str) -> str:
+    return (
+        f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. "
+        "I logged it. Say the name of the medicine and I'll order it."
+    )
+
+
+def _logged_reply_known(medication_label: str, quantity: int | None) -> str:
+    if quantity is not None:
+        return f"I found {medication_label}. About {quantity} pills left — plenty for now. I logged it."
     return f"I found {medication_label}. I logged it."
 
 
-def _offer_refill_reply(medication_label: str) -> str:
-    return (
-        f"I found {medication_label}. I logged it. Reply 'yes' to order a refill."
-    )
+def _offer_refill_reply(medication_label: str, quantity: int | None) -> str:
+    if quantity is not None:
+        return (
+            f"I found {medication_label}. Only about {quantity} pills left. "
+            "Reply 'yes' to order a refill."
+        )
+    return f"I found {medication_label}. I logged it. Reply 'yes' to order a refill."
 
 
 def _order_reply(medication_label: str) -> str:
@@ -136,6 +170,10 @@ def _order_reply(medication_label: str) -> str:
 
 def _unknown_order_reply() -> str:
     return "I could not identify that medicine clearly enough to request a refill. I logged it for your caregiver to review."
+
+
+def _not_prescription_reply() -> str:
+    return "That doesn't look like a medicine to me. Send a clear photo of the pill bottle or prescription label."
 
 
 def _duplicate_reply(medication_label: str) -> str:
@@ -246,6 +284,13 @@ async def process_photo_message(
             return
 
         result = await analyze_medication_with_fallback(image_bytes, mime_type)
+
+        if _is_not_prescription(result):
+            reply = _not_prescription_reply()
+            log_interaction(body or "Photo message", reply, "not_prescription")
+            send_message(from_number, reply, base_url)
+            return
+
         med_log_id = log_photo_medication(result)
         record_photo(from_number, image_sha256, med_log_id)
 
@@ -259,9 +304,10 @@ async def process_photo_message(
         ):
             return
 
-        med_name = str(result.get("name") or "Unknown")
+        med_name = _medication_name(result)
         dosage = str(result.get("dosage") or "unknown dosage")
-        warning = str(result.get("warnings") or "Please verify this with your caregiver.")
+        quantity = _quantity(result)
+        refill_needed = _refill_needed(result)
         medication_label = f"{med_name} {dosage}".strip()
         is_fallback = _is_fallback_result(result)
         is_unknown = _is_unknown_medication(med_name)
@@ -269,43 +315,49 @@ async def process_photo_message(
         if is_unknown or is_fallback:
             log_alert(
                 "medication_review",
-                f"Medication photo needs review. Log #{med_log_id}. {warning}",
+                f"Medication photo needs review. Log #{med_log_id}.",
             )
 
         if is_fallback:
-            logged_reply = _logged_reply(medication_label, result)
-            log_interaction(body or "Photo message", logged_reply, "log_medication")
-            send_message(from_number, logged_reply, base_url)
+            reply = _logged_reply_fallback(medication_label)
+            log_interaction(body or "Photo message", reply, "log_medication")
+            send_message(from_number, reply, base_url)
             return
 
-        if not order_requested:
+        if order_requested:
             if is_unknown:
-                reply = _logged_reply(medication_label, result)
-                log_interaction(body or "Photo message", reply, "log_medication")
-                send_message(from_number, reply, base_url)
+                send_message(from_number, _unknown_order_reply(), base_url)
                 return
-            offer = _offer_refill_reply(medication_label)
+            reply = _order_reply(medication_label)
+            log_interaction(body or "Photo message", reply, "log_medication")
+            send_message(from_number, reply, base_url)
+            await place_mock_or_live_order(
+                from_number=from_number,
+                medication=med_name,
+                dosage=dosage,
+                med_log_id=med_log_id,
+                reason=body or "WhatsApp photo refill request",
+                base_url=base_url,
+                send_message=send_message,
+            )
+            return
+
+        if is_unknown:
+            reply = _logged_reply_known(medication_label, quantity)
+            log_interaction(body or "Photo message", reply, "log_medication")
+            send_message(from_number, reply, base_url)
+            return
+
+        if refill_needed:
+            offer = _offer_refill_reply(medication_label, quantity)
             set_pending_order(from_number, med_log_id, med_name, dosage)
             log_interaction(body or "Photo message", offer, "log_medication")
             send_message(from_number, offer, base_url)
             return
 
-        if is_unknown:
-            send_message(from_number, _unknown_order_reply(), base_url)
-            return
-
-        order_reply = _order_reply(medication_label)
-        log_interaction(body or "Photo message", order_reply, "log_medication")
-        send_message(from_number, order_reply, base_url)
-        await place_mock_or_live_order(
-            from_number=from_number,
-            medication=med_name,
-            dosage=dosage,
-            med_log_id=med_log_id,
-            reason=body or "WhatsApp photo refill request",
-            base_url=base_url,
-            send_message=send_message,
-        )
+        ack = _logged_reply_known(medication_label, quantity)
+        log_interaction(body or "Photo message", ack, "log_medication")
+        send_message(from_number, ack, base_url)
     except Exception as exc:
         print(f"[photo] processing failed: {exc}")
         log_alert("photo_processing_failed", f"Could not process medication photo from {from_number}: {exc}")

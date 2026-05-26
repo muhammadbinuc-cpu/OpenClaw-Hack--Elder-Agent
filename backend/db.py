@@ -123,6 +123,12 @@ def log_interaction(patient_message: str, agent_response: str, action_taken: str
 
 
 def log_photo_medication(result: dict[str, Any]) -> int:
+    quantity = result.get("quantity")
+    refill_needed = bool(result.get("refill_needed"))
+    if quantity is not None:
+        purpose = f"~{quantity} pills remaining; refill_needed={refill_needed}"
+    else:
+        purpose = f"refill_needed={refill_needed}"
     with connect() as conn:
         cursor = conn.execute(
             """
@@ -131,9 +137,9 @@ def log_photo_medication(result: dict[str, Any]) -> int:
             """,
             (
                 utc_now(),
-                str(result.get("name") or "Unknown"),
+                str(result.get("medication") or result.get("name") or "Unknown"),
                 str(result.get("dosage") or "Unknown"),
-                str(result.get("purpose") or "Ask a caregiver to verify."),
+                purpose,
                 str(result.get("confidence") or "unknown"),
                 "photo",
             ),
