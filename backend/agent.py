@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Literal
 
 from anthropic import Anthropic
@@ -47,6 +48,14 @@ def _fallback_decision(message: str) -> AgentDecision:
     )
 
 
+def _parse_decision(content: str) -> AgentDecision:
+    cleaned = content.strip()
+    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if match:
+        cleaned = match.group(0)
+    return AgentDecision.model_validate(json.loads(cleaned))
+
+
 def interpret_patient_message(message: str, patient_name: str) -> AgentDecision:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -55,7 +64,7 @@ def interpret_patient_message(message: str, patient_name: str) -> AgentDecision:
     try:
         client = Anthropic(api_key=api_key)
         response = client.messages.create(
-            model="claude-3-5-haiku-latest",
+            model="claude-haiku-4-5-20251001",
             max_tokens=220,
             temperature=0,
             system=SYSTEM_PROMPT.strip(),
@@ -67,9 +76,7 @@ def interpret_patient_message(message: str, patient_name: str) -> AgentDecision:
             ],
         )
         content = response.content[0].text if response.content else "{}"
-        data = json.loads(content)
-        decision = AgentDecision.model_validate(data)
-        return decision
+        return _parse_decision(content)
     except (json.JSONDecodeError, ValidationError, Exception) as exc:
         print(f"[agent] falling back after LLM error: {exc}")
         return _fallback_decision(message)
