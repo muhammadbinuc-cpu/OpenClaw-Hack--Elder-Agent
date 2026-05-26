@@ -45,7 +45,7 @@ def test_analyze_file(image_bytes: bytes):
     r = httpx.post(
         f"{BASE_URL}/analyze",
         files={"file": ("test.jpg", image_bytes, "image/jpeg")},
-        timeout=30.0,
+        timeout=45.0,
     )
     print(f"status: {r.status_code}")
     print(f"body:   {r.json()}\n")
@@ -58,7 +58,7 @@ def test_analyze_base64(image_bytes: bytes):
     r = httpx.post(
         f"{BASE_URL}/analyze-base64",
         json={"image": encoded, "mime_type": "image/jpeg"},
-        timeout=30.0,
+        timeout=45.0,
     )
     print(f"status: {r.status_code}")
     print(f"body:   {r.json()}\n")

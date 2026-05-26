@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 FALLBACK_RESPONSE = {
-    "is_prescription": True,
     "medication": "Lisinopril",
     "dosage": "10mg",
     "quantity": 3,
@@ -40,16 +39,19 @@ def _client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
+NOT_A_PRESCRIPTION = {"error": "not a proper prescription"}
+
+
 def _parse(text: str) -> dict:
     cleaned = re.sub(r"```(?:json)?", "", text).strip()
     data = json.loads(cleaned)
-    is_prescription = bool(data.get("is_prescription", False))
+    if not data.get("is_prescription", False):
+        return NOT_A_PRESCRIPTION.copy()
     return {
-        "is_prescription": is_prescription,
-        "medication": str(data["medication"]) if is_prescription and data.get("medication") else None,
-        "dosage": str(data["dosage"]) if is_prescription and data.get("dosage") else None,
-        "quantity": int(data.get("quantity", 0)) if is_prescription else 0,
-        "refill_needed": bool(data.get("refill_needed", False)) if is_prescription else False,
+        "medication": str(data["medication"]) if data.get("medication") else "Unknown",
+        "dosage": str(data["dosage"]) if data.get("dosage") else "Unknown",
+        "quantity": int(data.get("quantity", 0)),
+        "refill_needed": bool(data.get("refill_needed", False)),
     }
 
 
@@ -70,8 +72,9 @@ def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> di
         print(f"[gemini] raw response: {raw_text}")
 
         result = _parse(raw_text)
-        result["confidence"] = "high"
-        result["raw_analysis"] = raw_text
+        if "error" not in result:
+            result["confidence"] = "high"
+            result["raw_analysis"] = raw_text
         return result
 
     except json.JSONDecodeError as e:

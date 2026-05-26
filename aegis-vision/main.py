@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -43,7 +44,7 @@ class Base64ImageRequest(BaseModel):
 
 
 async def _forward_to_backend(result: dict) -> None:
-    if not BACKEND_URL:
+    if not BACKEND_URL or "error" in result:
         return
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -51,6 +52,12 @@ async def _forward_to_backend(result: dict) -> None:
             print(f"[backend] forwarded result — status {resp.status_code}")
     except Exception as e:
         print(f"[backend] forward failed (non-fatal): {e}")
+
+
+def _make_response(result: dict):
+    if "error" in result:
+        return JSONResponse(status_code=400, content=result)
+    return result
 
 
 @app.get("/health")
@@ -71,7 +78,7 @@ async def analyze(file: UploadFile = File(...)):
 
     print(f"[/analyze] result: {result}")
     await _forward_to_backend(result)
-    return result
+    return _make_response(result)
 
 
 @app.post("/analyze-base64")
@@ -90,7 +97,7 @@ async def analyze_base64(body: Base64ImageRequest):
 
     print(f"[/analyze-base64] result: {result}")
     await _forward_to_backend(result)
-    return result
+    return _make_response(result)
 
 
 if __name__ == "__main__":
