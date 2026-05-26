@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from gemini_client import analyze_image_bytes
+from vision_client import analyze_image_bytes
 
 load_dotenv()
 
