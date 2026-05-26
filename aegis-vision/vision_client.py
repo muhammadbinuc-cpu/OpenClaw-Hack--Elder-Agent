@@ -16,11 +16,19 @@ FALLBACK_RESPONSE = {
 }
 
 CLAUDE_PROMPT = (
-    "You are analyzing a prescription label or medication bottle for an elderly care AI agent. "
-    "Extract the following and return as JSON only, no markdown, no extra text: "
-    "medication name, dosage in mg, estimated pills remaining if visible, "
-    "whether refill is needed (true if quantity is 5 or less). "
-    'Format: {"medication": "", "dosage": "", "quantity": 0, "refill_needed": true/false, "confidence": "high/medium/low"}'
+    "You are analyzing an image for an elderly care AI agent called Aegis. "
+    "First determine whether the image shows a prescription medication label or pill bottle. "
+    "Return ONLY a valid JSON object — no markdown, no code fences, no explanation.\n\n"
+    "Always include:\n"
+    '  "is_prescription": true if the image clearly shows a prescription medication or pill bottle, false for anything else\n\n'
+    "If is_prescription is true, also include:\n"
+    '  "medication": full medication name (string)\n'
+    '  "dosage": dosage including units e.g. "10mg" (string)\n'
+    '  "quantity": estimated number of pills remaining (integer)\n'
+    '  "refill_needed": true if quantity is 5 or less, otherwise false (boolean)\n'
+    '  "confidence": "high", "medium", or "low" (string)\n\n'
+    "If is_prescription is false, omit the above fields.\n"
+    "Return raw JSON only."
 )
 
 
@@ -33,7 +41,16 @@ def _client() -> anthropic.Anthropic:
 
 def _parse(text: str) -> dict:
     cleaned = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
-    return json.loads(cleaned)
+    data = json.loads(cleaned)
+    if not data.get("is_prescription", False):
+        return {"error": "not a proper prescription"}
+    return {
+        "medication": str(data["medication"]) if data.get("medication") else "Unknown",
+        "dosage": str(data["dosage"]) if data.get("dosage") else "Unknown",
+        "quantity": int(data.get("quantity", 0)),
+        "refill_needed": bool(data.get("refill_needed", False)),
+        "confidence": data.get("confidence", "low"),
+    }
 
 
 def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
@@ -70,7 +87,8 @@ def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> di
         print(f"[vision] raw response: {raw_text}")
 
         result = _parse(raw_text)
-        result["raw_analysis"] = raw_text
+        if "error" not in result:
+            result["raw_analysis"] = raw_text
         return result
 
     except json.JSONDecodeError as e:
