@@ -2,12 +2,12 @@
 
 /* ── Theme variables ──────────────────────────────── */
 :root {
-  --bg: #FAF9F7;
-  --surface: #F0EDE8;
-  --text: #1C1917;
-  --muted: #78716C;
-  --accent: #0D9488;
-  --border: #E7E5E0;
+  --bg: #0f0f0f;
+  --surface: #111111;
+  --text: #f0f0f0;
+  --muted: #505050;
+  --accent: #00c896;
+  --border: #1a1a1a;
   --success: #16A34A;
   --warning: #D97706;
   --danger: #DC2626;
@@ -15,12 +15,12 @@
 }
 
 .dark {
-  --bg: #1C1917;
-  --surface: #292524;
-  --text: #FAF9F7;
-  --muted: #A8A29E;
-  --accent: #14B8A6;
-  --border: #3D3835;
+  --bg: #0f0f0f;
+  --surface: #111111;
+  --text: #f0f0f0;
+  --muted: #505050;
+  --accent: #00c896;
+  --border: #1a1a1a;
 }
 
 /* ── Semantic utilities ───────────────────────────── */

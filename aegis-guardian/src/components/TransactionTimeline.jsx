@@ -63,7 +63,7 @@ export default function TransactionTimeline() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.32, ease: 'easeOut' }}
       className="px-8 md:px-12 py-12"
-      style={{ backgroundColor: '#1C1917', minHeight: 'calc(100vh - 3.5rem)' }}
+      style={{ backgroundColor: '#1C1917' }}
     >
       {/* Back link */}
       <Link

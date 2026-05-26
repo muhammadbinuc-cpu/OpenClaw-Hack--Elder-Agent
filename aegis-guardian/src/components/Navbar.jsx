@@ -1,7 +1,29 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { Shield, Sun, Moon, Menu, X } from 'lucide-react'
+import { Sun, Moon, Menu, X } from 'lucide-react'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { useTheme } from '../context/ThemeContext'
+
+function AegisLogo() {
+  return (
+    <svg width="17" height="20" viewBox="0 0 17 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M8.5 1L1.5 3.8V9.5C1.5 13.8 4.6 17.6 8.5 19C12.4 17.6 15.5 13.8 15.5 9.5V3.8L8.5 1Z"
+        stroke="#00c896"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M5.5 9.8L7.3 11.8L11.5 7.2"
+        stroke="#00c896"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 const navLinks = [
   { label: 'Home',      to: '/' },
@@ -12,11 +34,22 @@ const navLinks = [
 export default function Navbar() {
   const { dark, toggle } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { scrollY } = useScroll()
+  const navBg = useTransform(scrollY, [0, 60], ['rgba(10,10,10,0)', 'rgba(10,10,10,0.97)'])
+  const borderColor = useTransform(scrollY, [0, 60], ['rgba(26,26,26,0)', 'rgba(26,26,26,1)'])
+  const boxShadow = useTransform(scrollY, [0, 60], ['0 0 0 rgba(0,0,0,0)', '0 8px 40px rgba(0,0,0,0.55)'])
 
   return (
-    <header
+    <motion.header
       className="sticky top-0 z-50 w-full border-b"
-      style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', height: 'var(--navbar-h)' }}
+      style={{
+        backgroundColor: navBg,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        borderColor: borderColor,
+        boxShadow: boxShadow,
+        height: 'var(--navbar-h)',
+      }}
     >
       {/* ── Desktop ── */}
       <div className="hidden md:grid grid-cols-3 items-center h-full px-12 max-w-none">
@@ -24,10 +57,10 @@ export default function Navbar() {
         <Link
           to="/"
           className="flex items-center gap-2 font-semibold text-sm tracking-tight"
-          style={{ color: 'var(--text)' }}
+          style={{ color: '#f5f5f5' }}
         >
-          <Shield size={15} style={{ color: 'var(--accent)' }} strokeWidth={2.5} />
-          Aegis<span style={{ color: 'var(--muted)' }}>®</span>
+          <AegisLogo />
+          Aegis<span style={{ color: '#555' }}>®</span>
         </Link>
 
         <nav className="flex items-center justify-center gap-8">
@@ -77,10 +110,10 @@ export default function Navbar() {
         <Link
           to="/"
           className="flex items-center gap-2 font-semibold text-sm tracking-tight"
-          style={{ color: 'var(--text)' }}
+          style={{ color: '#f5f5f5' }}
         >
-          <Shield size={15} style={{ color: 'var(--accent)' }} strokeWidth={2.5} />
-          Aegis<span style={{ color: 'var(--muted)' }}>®</span>
+          <AegisLogo />
+          Aegis<span style={{ color: '#555' }}>®</span>
         </Link>
         <div className="flex items-center gap-1">
           <button onClick={toggle} className="p-2 rounded" style={{ color: 'var(--muted)' }} aria-label="Toggle theme">
@@ -122,6 +155,6 @@ export default function Navbar() {
           </div>
         </div>
       )}
-    </header>
+    </motion.header>
   )
 }
