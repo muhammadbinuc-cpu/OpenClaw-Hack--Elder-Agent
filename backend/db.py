@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -89,6 +89,24 @@ def init_db() -> None:
                 agent_response TEXT NOT NULL,
                 action_taken TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS pending_orders (
+                from_number TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                med_log_id INTEGER NOT NULL,
+                medication TEXT NOT NULL,
+                dosage TEXT NOT NULL,
+                FOREIGN KEY(med_log_id) REFERENCES med_logs(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS photo_cache (
+                from_number TEXT NOT NULL,
+                image_sha256 TEXT NOT NULL,
+                med_log_id INTEGER NOT NULL,
+                timestamp TEXT NOT NULL,
+                PRIMARY KEY(from_number, image_sha256),
+                FOREIGN KEY(med_log_id) REFERENCES med_logs(id)
+            );
             """
         )
 
@@ -171,6 +189,78 @@ def log_alert(alert_type: str, message: str) -> None:
             VALUES (?, ?, ?, 0)
             """,
             (utc_now(), alert_type, message),
+        )
+
+
+def set_pending_order(from_number: str, med_log_id: int, medication: str, dosage: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO pending_orders (from_number, timestamp, med_log_id, medication, dosage)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(from_number) DO UPDATE SET
+                timestamp=excluded.timestamp,
+                med_log_id=excluded.med_log_id,
+                medication=excluded.medication,
+                dosage=excluded.dosage
+            """,
+            (from_number, utc_now(), med_log_id, medication, dosage),
+        )
+
+
+def pop_pending_order(from_number: str, ttl_minutes: int = 15) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM pending_orders WHERE from_number = ?",
+            (from_number,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute("DELETE FROM pending_orders WHERE from_number = ?", (from_number,))
+        try:
+            created = datetime.fromisoformat(row["timestamp"])
+        except ValueError:
+            return None
+        if datetime.now(timezone.utc) - created > timedelta(minutes=ttl_minutes):
+            return None
+        return row_to_dict(row)
+
+
+def clear_pending_order(from_number: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM pending_orders WHERE from_number = ?", (from_number,))
+
+
+def lookup_recent_photo(
+    from_number: str, image_sha256: str, ttl_minutes: int = 5
+) -> dict[str, Any] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM photo_cache WHERE from_number = ? AND image_sha256 = ?",
+            (from_number, image_sha256),
+        ).fetchone()
+        if row is None:
+            return None
+        try:
+            recorded = datetime.fromisoformat(row["timestamp"])
+        except ValueError:
+            return None
+        if datetime.now(timezone.utc) - recorded > timedelta(minutes=ttl_minutes):
+            return None
+        return row_to_dict(row)
+
+
+def record_photo(from_number: str, image_sha256: str, med_log_id: int) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO photo_cache (from_number, image_sha256, med_log_id, timestamp)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(from_number, image_sha256) DO UPDATE SET
+                med_log_id=excluded.med_log_id,
+                timestamp=excluded.timestamp
+            """,
+            (from_number, image_sha256, med_log_id, utc_now()),
         )
 
 

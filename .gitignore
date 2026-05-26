@@ -17,6 +17,9 @@ backend/static/audio/
 *.png
 *.jpeg
 
+# Local simulator state
+backend/.simulate_state.json
+
 # OS
 .DS_Store
 Thumbs.db

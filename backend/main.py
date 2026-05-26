@@ -1,4 +1,5 @@
 import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -14,8 +15,21 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
 from agent import AgentDecision, interpret_patient_message
-from db import connect, init_db, log_interaction, row_to_dict, utc_now
-from photo_flow import process_photo_message
+from db import (
+    clear_pending_order,
+    connect,
+    init_db,
+    log_interaction,
+    pop_pending_order,
+    row_to_dict,
+    utc_now,
+)
+from photo_flow import place_mock_or_live_order, process_photo_message
+
+
+CONFIRM_PATTERN = re.compile(r"^\s*(yes|yeah|yep|ok|okay|do it|order it|sure)\b", re.IGNORECASE)
+CANCEL_PATTERN = re.compile(r"^\s*(no|nope|cancel|stop|don'?t)\b", re.IGNORECASE)
+MAX_MEDIA_ATTACHMENTS = 10
 
 
 load_dotenv()
@@ -155,24 +169,70 @@ async def whatsapp_webhook(
     Body: str = Form(""),
     NumMedia: int = Form(0),
     MediaUrl0: str = Form(""),
+    MediaUrl1: str = Form(""),
+    MediaUrl2: str = Form(""),
+    MediaUrl3: str = Form(""),
+    MediaUrl4: str = Form(""),
+    MediaUrl5: str = Form(""),
+    MediaUrl6: str = Form(""),
+    MediaUrl7: str = Form(""),
+    MediaUrl8: str = Form(""),
+    MediaUrl9: str = Form(""),
 ) -> Response:
     base_url = _public_url(request)
     from_number = From.replace("whatsapp:", "")
 
-    if NumMedia > 0 and MediaUrl0:
-        background_tasks.add_task(
-            process_photo_message,
-            MediaUrl0,
-            Body or "",
-            from_number,
-            base_url,
-            send_whatsapp_message,
-        )
+    media_urls = [
+        url for url in (
+            MediaUrl0, MediaUrl1, MediaUrl2, MediaUrl3, MediaUrl4,
+            MediaUrl5, MediaUrl6, MediaUrl7, MediaUrl8, MediaUrl9,
+        ) if url
+    ][:MAX_MEDIA_ATTACHMENTS]
+
+    if NumMedia > 0 and media_urls:
+        for url in media_urls:
+            background_tasks.add_task(
+                process_photo_message,
+                url,
+                Body or "",
+                from_number,
+                base_url,
+                send_whatsapp_message,
+            )
         return _twiml("I'm checking that medicine now.")
 
-    decision = interpret_patient_message(Body or "", PATIENT_NAME)
-    log_interaction(Body or "", decision.spoken_response, decision.action)
-    execute_text_action(from_number, Body or "", decision)
+    body = Body or ""
+
+    if from_number and CONFIRM_PATTERN.match(body):
+        pending = pop_pending_order(from_number)
+        if pending is not None:
+            ack = f"Ordering a refill of {pending['medication']} {pending['dosage']} now."
+            log_interaction(body, ack, "confirm_order")
+            background_tasks.add_task(
+                place_mock_or_live_order,
+                from_number=from_number,
+                medication=pending["medication"],
+                dosage=pending["dosage"],
+                med_log_id=pending["med_log_id"],
+                reason=f"WhatsApp confirmation: {body}",
+                base_url=base_url,
+                send_message=send_whatsapp_message,
+            )
+            background_tasks.add_task(send_whatsapp_voice_note, from_number, ack, base_url)
+            return _twiml(ack)
+
+    if from_number and CANCEL_PATTERN.match(body):
+        pending = pop_pending_order(from_number)
+        if pending is not None:
+            reply = "Okay, I won't order it."
+            log_interaction(body, reply, "cancel_order")
+            background_tasks.add_task(send_whatsapp_voice_note, from_number, reply, base_url)
+            return _twiml(reply)
+        clear_pending_order(from_number)
+
+    decision = interpret_patient_message(body, PATIENT_NAME)
+    log_interaction(body, decision.spoken_response, decision.action)
+    execute_text_action(from_number, body, decision)
     background_tasks.add_task(send_whatsapp_voice_note, from_number, decision.spoken_response, base_url)
     return _twiml(decision.spoken_response)
 

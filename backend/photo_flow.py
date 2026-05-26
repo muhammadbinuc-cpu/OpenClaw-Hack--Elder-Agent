@@ -1,12 +1,40 @@
 import base64
+import hashlib
 import os
 import re
 from typing import Any, Callable
 
 import httpx
 
-from db import log_alert, log_interaction, log_order_request, log_photo_medication
+from db import (
+    log_alert,
+    log_interaction,
+    log_order_request,
+    log_photo_medication,
+    lookup_recent_photo,
+    record_photo,
+    set_pending_order,
+)
 from order_agent import request_refill_order
+
+
+SIMULATE_VISION_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xcf"
+    b"\xc0\xf0\x9f\x01\x00\x05\x00\x01\xff\xf6\xdb\xab\xfb\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+SIMULATE_VISION_RESULT: dict[str, Any] = {
+    "name": "Lisinopril",
+    "dosage": "10mg",
+    "purpose": "Blood pressure medication. Demo simulator result.",
+    "confidence": "high",
+    "warnings": "Simulated result for local development only.",
+    "visual_evidence": "Simulator stub — vision service was not called.",
+}
+
+
+def _is_simulation_enabled() -> bool:
+    return os.getenv("AEGIS_SIMULATE_VISION", "").strip().lower() in {"1", "true", "yes"}
 
 
 SendMessage = Callable[[str, str, str], None]
@@ -41,6 +69,9 @@ def _twilio_auth() -> tuple[str, str] | None:
 
 
 async def download_twilio_media(media_url: str) -> tuple[bytes, str]:
+    if _is_simulation_enabled():
+        url_salt = hashlib.sha256(media_url.encode("utf-8")).digest()[:8]
+        return SIMULATE_VISION_PNG + url_salt, "image/png"
     async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
         response = await client.get(media_url, auth=_twilio_auth())
         response.raise_for_status()
@@ -59,6 +90,8 @@ async def analyze_medication(image_bytes: bytes, mime_type: str) -> dict[str, An
 
 
 async def analyze_medication_with_fallback(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
+    if _is_simulation_enabled():
+        return SIMULATE_VISION_RESULT.copy()
     try:
         return await analyze_medication(image_bytes, mime_type)
     except Exception as exc:
@@ -79,18 +112,61 @@ def _is_unknown_medication(med_name: str) -> bool:
 
 def _logged_reply(medication_label: str, result: dict[str, Any]) -> str:
     if _is_fallback_result(result):
-        return f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. I logged it."
+        return (
+            f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. "
+            "I logged it. Say the name of the medicine and I'll order it."
+        )
     return f"I found {medication_label}. I logged it."
 
 
-def _order_reply(medication_label: str, result: dict[str, Any]) -> str:
-    if _is_fallback_result(result):
-        return f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. I placed a refill request."
+def _offer_refill_reply(medication_label: str) -> str:
+    return (
+        f"I found {medication_label}. I logged it. Reply 'yes' to order a refill."
+    )
+
+
+def _order_reply(medication_label: str) -> str:
     return f"I found {medication_label}. I placed a refill request."
 
 
 def _unknown_order_reply() -> str:
     return "I could not identify that medicine clearly enough to request a refill. I logged it for your caregiver to review."
+
+
+def _duplicate_reply(medication_label: str) -> str:
+    if medication_label:
+        return f"I already saw that {medication_label} — still logged."
+    return "I already saw that one — still logged."
+
+
+async def place_mock_or_live_order(
+    *,
+    from_number: str,
+    medication: str,
+    dosage: str,
+    med_log_id: int | None,
+    reason: str,
+    base_url: str,
+    send_message: SendMessage,
+) -> None:
+    payment_result = await request_refill_order(medication, dosage)
+    order_id = log_order_request(
+        med_log_id=med_log_id if med_log_id is not None else 0,
+        medication=medication,
+        dosage=dosage,
+        reason=reason,
+        payment_agent_status=payment_result.status,
+        tx_hash=payment_result.tx_hash,
+        agent_response=payment_result.raw_response,
+    )
+    if payment_result.success and payment_result.status == "mock_confirmed":
+        confirmation = "The refill request is confirmed in demo mode."
+    elif payment_result.success:
+        confirmation = "The refill request is confirmed."
+    else:
+        confirmation = "I placed the refill request, but the payment agent could not confirm it yet."
+        log_alert("payment_agent_failed", f"Order #{order_id} could not be confirmed: {payment_result.message}")
+    send_message(from_number, confirmation, base_url)
 
 
 async def process_photo_message(
@@ -103,45 +179,64 @@ async def process_photo_message(
     order_requested = has_order_intent(body)
     try:
         image_bytes, mime_type = await download_twilio_media(media_url)
+        image_sha256 = hashlib.sha256(image_bytes).hexdigest()
+        cached = lookup_recent_photo(from_number, image_sha256)
+        if cached is not None:
+            send_message(from_number, _duplicate_reply(""), base_url)
+            log_interaction(body or "Photo message", "duplicate photo within 5 minutes", "dedupe")
+            return
+
         result = await analyze_medication_with_fallback(image_bytes, mime_type)
         med_log_id = log_photo_medication(result)
+        record_photo(from_number, image_sha256, med_log_id)
+
         med_name = str(result.get("name") or "Unknown")
         dosage = str(result.get("dosage") or "unknown dosage")
         warning = str(result.get("warnings") or "Please verify this with your caregiver.")
         medication_label = f"{med_name} {dosage}".strip()
-        logged_reply = _logged_reply(medication_label, result)
-        log_interaction(body or "Photo message", logged_reply, "log_medication")
-        if _is_unknown_medication(med_name):
-            log_alert("medication_review", f"Medication photo needs review. Log #{med_log_id}. {warning}")
+        is_fallback = _is_fallback_result(result)
+        is_unknown = _is_unknown_medication(med_name)
 
-        if not order_requested:
+        if is_unknown or is_fallback:
+            log_alert(
+                "medication_review",
+                f"Medication photo needs review. Log #{med_log_id}. {warning}",
+            )
+
+        if is_fallback:
+            logged_reply = _logged_reply(medication_label, result)
+            log_interaction(body or "Photo message", logged_reply, "log_medication")
             send_message(from_number, logged_reply, base_url)
             return
 
-        if _is_unknown_medication(med_name):
+        if not order_requested:
+            if is_unknown:
+                reply = _logged_reply(medication_label, result)
+                log_interaction(body or "Photo message", reply, "log_medication")
+                send_message(from_number, reply, base_url)
+                return
+            offer = _offer_refill_reply(medication_label)
+            set_pending_order(from_number, med_log_id, med_name, dosage)
+            log_interaction(body or "Photo message", offer, "log_medication")
+            send_message(from_number, offer, base_url)
+            return
+
+        if is_unknown:
             send_message(from_number, _unknown_order_reply(), base_url)
             return
 
-        order_reply = _order_reply(medication_label, result)
+        order_reply = _order_reply(medication_label)
+        log_interaction(body or "Photo message", order_reply, "log_medication")
         send_message(from_number, order_reply, base_url)
-        payment_result = await request_refill_order(med_name, dosage)
-        order_id = log_order_request(
-            med_log_id=med_log_id,
+        await place_mock_or_live_order(
+            from_number=from_number,
             medication=med_name,
             dosage=dosage,
+            med_log_id=med_log_id,
             reason=body or "WhatsApp photo refill request",
-            payment_agent_status=payment_result.status,
-            tx_hash=payment_result.tx_hash,
-            agent_response=payment_result.raw_response,
+            base_url=base_url,
+            send_message=send_message,
         )
-        if payment_result.success and payment_result.status == "mock_confirmed":
-            confirmation = "The refill request is confirmed in demo mode."
-        elif payment_result.success:
-            confirmation = "The refill request is confirmed."
-        else:
-            confirmation = "I placed the refill request, but the payment agent could not confirm it yet."
-            log_alert("payment_agent_failed", f"Order #{order_id} could not be confirmed: {payment_result.message}")
-        send_message(from_number, confirmation, base_url)
     except Exception as exc:
         print(f"[photo] processing failed: {exc}")
         log_alert("photo_processing_failed", f"Could not process medication photo from {from_number}: {exc}")
