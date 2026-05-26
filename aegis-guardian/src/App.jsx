@@ -6,6 +6,7 @@ import HowItWorks from './pages/HowItWorks'
 import Help from './pages/Help'
 import Contact from './pages/Contact'
 import Privacy from './pages/Privacy'
+import TransactionDetail from './pages/TransactionDetail'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/transactions/:id" element={<TransactionDetail />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/help" element={<Help />} />
           <Route path="/contact" element={<Contact />} />

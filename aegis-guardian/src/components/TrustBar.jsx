@@ -1,13 +1,12 @@
-import { motion } from 'framer-motion'
-import { useInView } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 import { Link2, ShieldCheck, Lock, Heart } from 'lucide-react'
 
 const items = [
-  { icon: Link2,      label: 'Blockchain-verified pharmacy identities' },
+  { icon: Link2,       label: 'Blockchain-verified pharmacy identities' },
   { icon: ShieldCheck, label: 'Human approval on every high-risk action' },
-  { icon: Lock,       label: 'End-to-end encrypted' },
-  { icon: Heart,      label: 'Built for dementia care' },
+  { icon: Lock,        label: 'End-to-end encrypted' },
+  { icon: Heart,       label: 'Built for dementia care' },
 ]
 
 export default function TrustBar() {
@@ -27,10 +26,7 @@ export default function TrustBar() {
         transition={{ duration: 0.35, ease: 'easeOut' }}
       >
         {items.map(({ icon: Icon, label }) => (
-          <li
-            key={label}
-            className="flex flex-col items-center gap-2 text-center"
-          >
+          <li key={label} className="flex flex-col items-center gap-2 text-center">
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full"
               style={{ backgroundColor: 'var(--bg)' }}

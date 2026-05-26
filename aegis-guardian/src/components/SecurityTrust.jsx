@@ -1,31 +1,25 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { BadgeCheck, Zap, Globe } from 'lucide-react'
 
-const points = [
+const rows = [
   {
-    icon: BadgeCheck,
-    title: 'ERC-8004 identity verification',
-    desc: 'Every pharmacy agent carries a cryptographically signed on-chain identity. Aegis checks it before authorizing a single dollar.',
+    indicator: '01',
+    title: 'ERC-8004 Identity',
+    desc: 'Every pharmacy agent carries a verified blockchain identity — checked before a single dollar moves.',
   },
   {
-    icon: Zap,
-    title: 'x402 autonomous payments',
-    desc: 'Payments are executed by the agent directly over the x402 protocol — no card numbers, no manual approvals for routine refills.',
+    indicator: '02',
+    title: 'x402 Payments',
+    desc: 'Autonomous payments executed without human friction, directly over the x402 protocol.',
   },
   {
-    icon: Globe,
-    title: 'GoatScan public audit trail',
-    desc: 'Every transaction is recorded on the GOAT Network and viewable on GoatScan. Full transparency, forever.',
+    indicator: '03',
+    title: 'GoatScan Audit',
+    desc: 'Every transaction publicly verifiable on GOAT Network. Full transparency, forever.',
   },
 ]
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1 } },
-}
-
-const item = {
+const row = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
 }
@@ -35,45 +29,70 @@ export default function SecurityTrust() {
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
   return (
-    <section className="px-6 py-24" style={{ backgroundColor: '#292524' }}>
-      <div className="mx-auto max-w-5xl">
-        {/* Heading */}
-        <div className="mb-14 text-center">
-          <p className="mb-2 text-xs font-medium uppercase tracking-widest" style={{ color: '#14B8A6' }}>
-            Security & trust
+    <section style={{ backgroundColor: '#292524' }} className="overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-2">
+
+        {/* Left — oversized text */}
+        <div
+          className="flex items-center px-8 md:px-12 py-16 md:py-0 md:border-r overflow-hidden"
+          style={{ borderColor: '#3D3835' }}
+        >
+          <p
+            className="font-light leading-none tracking-tight select-none whitespace-nowrap"
+            style={{
+              fontSize: 'clamp(72px, 9vw, 130px)',
+              color: '#FAF9F7',
+              opacity: 0.88,
+              marginLeft: '-0.02em',
+            }}
+          >
+            On&#8209;Chain.
           </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight" style={{ color: '#FAF9F7' }}>
-            Every transaction is verified on-chain.
-          </h2>
         </div>
 
-        {/* Points */}
+        {/* Right — rows */}
         <motion.div
           ref={ref}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          variants={container}
+          className="border-t md:border-t-0"
+          style={{ borderColor: '#3D3835' }}
           initial="hidden"
           animate={inView ? 'show' : 'hidden'}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.15 } } }}
         >
-          {points.map(({ icon: Icon, title, desc }) => (
-            <motion.div key={title} variants={item} className="flex flex-col gap-4">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-lg"
-                style={{ backgroundColor: 'rgba(20,184,166,0.12)' }}
+          {rows.map(({ indicator, title, desc }) => (
+            <motion.div
+              key={indicator}
+              variants={row}
+              className="grid items-start gap-4 px-8 md:px-10 py-8 border-b"
+              style={{
+                borderColor: '#3D3835',
+                gridTemplateColumns: '2rem 1fr auto',
+              }}
+            >
+              {/* Accent indicator */}
+              <span
+                className="text-[11px] font-semibold pt-0.5"
+                style={{ color: '#14B8A6' }}
               >
-                <Icon size={18} style={{ color: '#14B8A6' }} strokeWidth={1.8} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold mb-1.5" style={{ color: '#FAF9F7' }}>
+                {indicator}
+              </span>
+
+              {/* Text */}
+              <div className="flex flex-col gap-1.5">
+                <h3 className="text-base font-medium" style={{ color: '#FAF9F7' }}>
                   {title}
                 </h3>
                 <p className="text-sm leading-relaxed" style={{ color: '#A8A29E' }}>
                   {desc}
                 </p>
               </div>
+
+              {/* Arrow */}
+              <span className="text-sm pt-0.5" style={{ color: '#14B8A6', opacity: 0.6 }}>↗</span>
             </motion.div>
           ))}
         </motion.div>
+
       </div>
     </section>
   )

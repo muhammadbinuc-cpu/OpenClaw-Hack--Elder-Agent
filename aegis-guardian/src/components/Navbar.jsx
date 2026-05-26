@@ -4,9 +4,9 @@ import { Shield, Sun, Moon, Menu, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 
 const navLinks = [
-  { label: 'How It Works', to: '/how-it-works' },
-  { label: 'Help', to: '/help' },
-  { label: 'Contact', to: '/contact' },
+  { label: 'Home',      to: '/' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Help',      to: '/help' },
 ]
 
 export default function Navbar() {
@@ -15,107 +15,111 @@ export default function Navbar() {
 
   return (
     <header
-      className="sticky top-0 z-50 w-full border-b border-app"
-      style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
+      className="sticky top-0 z-50 w-full border-b"
+      style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)', height: 'var(--navbar-h)' }}
     >
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      {/* ── Desktop ── */}
+      <div className="hidden md:grid grid-cols-3 items-center h-full px-12 max-w-none">
 
-        {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-2 font-semibold text-lg tracking-tight"
+          className="flex items-center gap-2 font-semibold text-sm tracking-tight"
           style={{ color: 'var(--text)' }}
         >
-          <Shield size={20} style={{ color: 'var(--accent)' }} strokeWidth={2.5} />
-          Aegis
+          <Shield size={15} style={{ color: 'var(--accent)' }} strokeWidth={2.5} />
+          Aegis<span style={{ color: 'var(--muted)' }}>®</span>
         </Link>
 
-        {/* Center links — desktop */}
-        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">
+        <nav className="flex items-center justify-center gap-8">
           {navLinks.map(({ label, to }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors duration-150 ${
-                    isActive ? 'text-accent' : ''
-                  }`
-                }
-                style={({ isActive }) => ({
-                  color: isActive ? 'var(--accent)' : 'var(--muted)',
-                })}
-              >
-                {label}
-              </NavLink>
-            </li>
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              style={({ isActive }) => ({
+                color: isActive ? 'var(--accent)' : 'var(--muted)',
+                fontSize: 11,
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.15em',
+                transition: 'opacity 0.15s ease',
+              })}
+            >
+              {label}
+            </NavLink>
           ))}
-        </ul>
+        </nav>
 
-        {/* Right — desktop */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="flex items-center justify-end gap-4">
+          <div className="text-right leading-tight">
+            <p style={{ fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>
+              Guardian Platform
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--muted)' }}>
+              Powered by GOAT Network
+            </p>
+          </div>
           <button
             onClick={toggle}
-            className="rounded-md p-2 transition-colors duration-150 hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
+            className="p-1.5 rounded"
+            style={{ color: 'var(--muted)', transition: 'opacity 0.15s ease' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = 0.6}
+            onMouseLeave={e => e.currentTarget.style.opacity = 1}
             aria-label="Toggle theme"
           >
-            {dark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
-          <button
-            className="rounded-md px-4 py-2 text-sm font-medium text-white transition-opacity duration-150 hover:opacity-85"
-            style={{ backgroundColor: 'var(--accent)' }}
-          >
-            Request Access
+            {dark ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
+      </div>
 
-        {/* Hamburger — mobile */}
-        <div className="flex md:hidden items-center gap-2">
-          <button
-            onClick={toggle}
-            className="rounded-md p-2"
-            style={{ color: 'var(--muted)' }}
-            aria-label="Toggle theme"
-          >
-            {dark ? <Sun size={18} /> : <Moon size={18} />}
+      {/* ── Mobile ── */}
+      <div className="flex md:hidden items-center justify-between h-full px-6">
+        <Link
+          to="/"
+          className="flex items-center gap-2 font-semibold text-sm tracking-tight"
+          style={{ color: 'var(--text)' }}
+        >
+          <Shield size={15} style={{ color: 'var(--accent)' }} strokeWidth={2.5} />
+          Aegis<span style={{ color: 'var(--muted)' }}>®</span>
+        </Link>
+        <div className="flex items-center gap-1">
+          <button onClick={toggle} className="p-2 rounded" style={{ color: 'var(--muted)' }} aria-label="Toggle theme">
+            {dark ? <Sun size={15} /> : <Moon size={15} />}
           </button>
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="rounded-md p-2"
-            style={{ color: 'var(--text)' }}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          <button onClick={() => setMenuOpen(o => !o)} className="p-2 rounded" style={{ color: 'var(--text)' }} aria-label="Toggle menu">
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
-      </nav>
+      </div>
 
-      {/* Mobile menu */}
+      {/* ── Mobile drawer ── */}
       {menuOpen && (
         <div
-          className="md:hidden border-t px-6 py-4 flex flex-col gap-4"
+          className="md:hidden border-t px-6 py-6 flex flex-col gap-5"
           style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}
         >
           {navLinks.map(({ label, to }) => (
             <NavLink
               key={to}
               to={to}
+              end={to === '/'}
               onClick={() => setMenuOpen(false)}
-              className="text-sm font-medium"
               style={({ isActive }) => ({
                 color: isActive ? 'var(--accent)' : 'var(--text)',
+                fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.15em',
               })}
             >
               {label}
             </NavLink>
           ))}
-          <button
-            className="mt-1 w-full rounded-md px-4 py-2 text-sm font-medium text-white"
-            style={{ backgroundColor: 'var(--accent)' }}
-          >
-            Request Access
-          </button>
+          <div className="pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <p style={{ fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text)' }}>
+              Guardian Platform
+            </p>
+            <p style={{ fontSize: 10, marginTop: 2, color: 'var(--muted)' }}>
+              Powered by GOAT Network
+            </p>
+          </div>
         </div>
       )}
     </header>
