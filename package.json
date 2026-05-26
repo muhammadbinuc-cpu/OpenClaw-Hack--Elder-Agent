@@ -1,0 +1,22 @@
+{
+  "name": "pharmacy-agent",
+  "version": "1.0.0",
+  "description": "ElderAgent PharmacyAgent server for hackathon",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "ts-node server.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ethers": "^6.9.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.0",
+    "@types/express": "^4.17.21"
+  }
+}
