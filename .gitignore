@@ -1,0 +1,22 @@
+# Environment — never commit secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+backend/data/
+backend/static/audio/
+
+# Test artifacts
+*.jpg
+*.png
+*.jpeg
+
+# OS
+.DS_Store
+Thumbs.db
