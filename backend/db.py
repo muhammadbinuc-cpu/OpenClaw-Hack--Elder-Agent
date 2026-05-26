@@ -1,9 +1,10 @@
+import json
 import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 
 def _database_path() -> Path:
@@ -59,6 +60,20 @@ def init_db() -> None:
                 FOREIGN KEY(med_log_id) REFERENCES med_logs(id)
             );
 
+            CREATE TABLE IF NOT EXISTS order_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                med_log_id INTEGER,
+                medication TEXT NOT NULL,
+                dosage TEXT NOT NULL,
+                status TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                payment_agent_status TEXT NOT NULL,
+                tx_hash TEXT,
+                agent_response TEXT NOT NULL,
+                FOREIGN KEY(med_log_id) REFERENCES med_logs(id)
+            );
+
             CREATE TABLE IF NOT EXISTS alerts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
@@ -75,6 +90,87 @@ def init_db() -> None:
                 action_taken TEXT NOT NULL
             );
             """
+        )
+
+
+def log_interaction(patient_message: str, agent_response: str, action_taken: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO interactions (timestamp, patient_message, agent_response, action_taken)
+            VALUES (?, ?, ?, ?)
+            """,
+            (utc_now(), patient_message, agent_response, action_taken),
+        )
+
+
+def log_photo_medication(result: dict[str, Any]) -> int:
+    with connect() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO med_logs (timestamp, med_name, dosage, purpose, confidence, source)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                utc_now(),
+                str(result.get("name") or "Unknown"),
+                str(result.get("dosage") or "Unknown"),
+                str(result.get("purpose") or "Ask a caregiver to verify."),
+                str(result.get("confidence") or "unknown"),
+                "photo",
+            ),
+        )
+        return int(cursor.lastrowid)
+
+
+def log_order_request(
+    med_log_id: int,
+    medication: str,
+    dosage: str,
+    reason: str,
+    payment_agent_status: str,
+    tx_hash: str | None,
+    agent_response: dict[str, Any],
+) -> int:
+    with connect() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO order_requests (
+                timestamp,
+                med_log_id,
+                medication,
+                dosage,
+                status,
+                reason,
+                payment_agent_status,
+                tx_hash,
+                agent_response
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                utc_now(),
+                med_log_id,
+                medication,
+                dosage,
+                payment_agent_status,
+                reason,
+                payment_agent_status,
+                tx_hash,
+                json.dumps(agent_response, sort_keys=True),
+            ),
+        )
+        return int(cursor.lastrowid)
+
+
+def log_alert(alert_type: str, message: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO alerts (timestamp, alert_type, message, resolved)
+            VALUES (?, ?, ?, 0)
+            """,
+            (utc_now(), alert_type, message),
         )
 
 

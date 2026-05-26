@@ -1,11 +1,9 @@
-import base64
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import httpx
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +14,13 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
 from agent import AgentDecision, interpret_patient_message
-from db import connect, init_db, row_to_dict, utc_now
+from db import connect, init_db, log_interaction, row_to_dict, utc_now
+from photo_flow import process_photo_message
 
 
 load_dotenv()
 
 PATIENT_NAME = os.getenv("PATIENT_NAME", "the patient")
-VISION_SERVICE_URL = os.getenv("VISION_SERVICE_URL", "http://127.0.0.1:5000").rstrip("/")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "")
@@ -124,17 +122,6 @@ def send_whatsapp_voice_note(to_number: str, text: str, base_url: str) -> None:
         print(f"[twilio] voice note send failed: {exc}")
 
 
-def log_interaction(patient_message: str, decision: AgentDecision) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO interactions (timestamp, patient_message, agent_response, action_taken)
-            VALUES (?, ?, ?, ?)
-            """,
-            (utc_now(), patient_message, decision.spoken_response, decision.action),
-        )
-
-
 def execute_text_action(from_number: str, message: str, decision: AgentDecision) -> None:
     with connect() as conn:
         if decision.action == "log_medication":
@@ -155,84 +142,6 @@ def execute_text_action(from_number: str, message: str, decision: AgentDecision)
             )
 
 
-async def download_twilio_media(media_url: str) -> tuple[bytes, str]:
-    auth = (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
-    async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
-        response = await client.get(media_url, auth=auth)
-        response.raise_for_status()
-        return response.content, response.headers.get("content-type", "image/jpeg")
-
-
-async def analyze_medication(image_bytes: bytes, mime_type: str) -> dict[str, Any]:
-    encoded = base64.b64encode(image_bytes).decode("utf-8")
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.post(
-            f"{VISION_SERVICE_URL}/analyze",
-            json={"image": encoded, "mime_type": mime_type},
-        )
-        response.raise_for_status()
-        return response.json()
-
-
-def log_photo_medication(result: dict[str, Any]) -> int:
-    with connect() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO med_logs (timestamp, med_name, dosage, purpose, confidence, source)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                utc_now(),
-                str(result.get("name") or "Unknown"),
-                str(result.get("dosage") or "Unknown"),
-                str(result.get("purpose") or "Ask a caregiver to verify."),
-                str(result.get("confidence") or "unknown"),
-                "photo",
-            ),
-        )
-        return int(cursor.lastrowid)
-
-
-def log_alert(alert_type: str, message: str) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO alerts (timestamp, alert_type, message, resolved)
-            VALUES (?, ?, ?, 0)
-            """,
-            (utc_now(), alert_type, message),
-        )
-
-
-async def process_photo_message(media_url: str, from_number: str, base_url: str) -> None:
-    try:
-        image_bytes, mime_type = await download_twilio_media(media_url)
-        result = await analyze_medication(image_bytes, mime_type)
-        med_log_id = log_photo_medication(result)
-        med_name = str(result.get("name") or "the medication")
-        dosage = str(result.get("dosage") or "unknown dosage")
-        warning = str(result.get("warnings") or "Please verify this with your caregiver.")
-        spoken = (
-            f"I identified {med_name}, {dosage}. "
-            "I logged it and your caregiver can review it."
-        )
-        log_interaction(
-            "Photo message",
-            AgentDecision(action="log_medication", spoken_response=spoken),
-        )
-        if "unknown" in med_name.lower():
-            log_alert("medication_review", f"Medication photo needs review. Log #{med_log_id}. {warning}")
-        send_whatsapp_message(from_number, spoken, base_url)
-    except Exception as exc:
-        print(f"[photo] processing failed: {exc}")
-        log_alert("photo_processing_failed", f"Could not process medication photo from {from_number}: {exc}")
-        send_whatsapp_message(
-            from_number,
-            "I could not read that photo clearly. I logged it so your caregiver can check.",
-            base_url,
-        )
-
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "aegis-backend"}
@@ -251,11 +160,18 @@ async def whatsapp_webhook(
     from_number = From.replace("whatsapp:", "")
 
     if NumMedia > 0 and MediaUrl0:
-        background_tasks.add_task(process_photo_message, MediaUrl0, from_number, base_url)
-        return _twiml("Processing your photo. I will tell you what I find in a moment.")
+        background_tasks.add_task(
+            process_photo_message,
+            MediaUrl0,
+            Body or "",
+            from_number,
+            base_url,
+            send_whatsapp_message,
+        )
+        return _twiml("I'm checking that medicine now.")
 
     decision = interpret_patient_message(Body or "", PATIENT_NAME)
-    log_interaction(Body or "", decision)
+    log_interaction(Body or "", decision.spoken_response, decision.action)
     execute_text_action(from_number, Body or "", decision)
     background_tasks.add_task(send_whatsapp_voice_note, from_number, decision.spoken_response, base_url)
     return _twiml(decision.spoken_response)
@@ -282,6 +198,13 @@ async def payments() -> list[dict[str, Any]]:
         return [row_to_dict(row) for row in rows]
 
 
+@app.get("/api/order-requests")
+async def order_requests() -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute("SELECT * FROM order_requests ORDER BY timestamp DESC").fetchall()
+        return [row_to_dict(row) for row in rows]
+
+
 @app.get("/api/stats")
 async def stats() -> dict[str, Any]:
     with connect() as conn:
@@ -292,12 +215,18 @@ async def stats() -> dict[str, Any]:
             "SELECT COUNT(*) AS count FROM alerts WHERE resolved = 0"
         ).fetchone()["count"]
         interactions = conn.execute("SELECT COUNT(*) AS count FROM interactions").fetchone()["count"]
+        order_requests_count = conn.execute("SELECT COUNT(*) AS count FROM order_requests").fetchone()["count"]
+        confirmed_orders = conn.execute(
+            "SELECT COUNT(*) AS count FROM order_requests WHERE status IN ('mock_confirmed', 'confirmed')"
+        ).fetchone()["count"]
         return {
             "patient_name": PATIENT_NAME,
             "status": "monitoring",
             "meds_today": meds_today,
             "active_alerts": active_alerts,
             "interactions": interactions,
+            "order_requests": order_requests_count,
+            "confirmed_orders": confirmed_orders,
         }
 
 

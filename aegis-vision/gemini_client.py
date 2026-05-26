@@ -13,12 +13,14 @@ FALLBACK_RESPONSE = {
     "purpose": "Helps lower blood pressure.",
     "warnings": "Check with a caregiver or doctor before changing how this is taken.",
     "confidence": "fallback",
+    "visual_evidence": "Gemini was unavailable, so no visual evidence was read from the photo.",
     "raw_analysis": "Gemini API unavailable — using hardcoded fallback response",
 }
 
 GEMINI_PROMPT = (
     "You are analyzing an image for an elderly care AI agent called Aegis. "
-    "Identify the medication from a prescription label, pill bottle, or package. "
+    "Carefully inspect the actual image for medication evidence: prescription label text, "
+    "medicine name, dosage strength, package branding, pill bottle text, and visible directions. "
     "Return ONLY a valid JSON object — no markdown, no code fences, no explanation.\n\n"
     "Always include:\n"
     '  "name": full medication name, or "Unknown" if unclear (string)\n'
@@ -26,8 +28,10 @@ GEMINI_PROMPT = (
     '  "purpose": short plain-language purpose of the medication (string)\n'
     '  "warnings": short safety warning for an elderly dementia patient (string)\n'
     '  "confidence": number from 0 to 1, or "low", "medium", "high" (number|string)\n\n'
+    '  "visual_evidence": short description of what you read or saw in the image (string)\n\n'
     "If the image is not a medication, set name to Unknown, dosage to Unknown, "
-    "purpose to Unable to identify, warnings to Ask a caregiver to verify, and confidence to low.\n"
+    "purpose to Unable to identify, warnings to Ask a caregiver to verify, confidence to low, "
+    "and visual_evidence to what made the image unclear.\n"
     "Return raw JSON only."
 )
 
@@ -55,6 +59,7 @@ def _parse(text: str) -> dict:
         "purpose": str(data.get("purpose") or "Ask a caregiver or pharmacist to verify."),
         "warnings": str(data.get("warnings") or "Do not change medication without checking with a caregiver."),
         "confidence": confidence,
+        "visual_evidence": str(data.get("visual_evidence") or data.get("evidence") or "No visual evidence provided."),
     }
 
 
