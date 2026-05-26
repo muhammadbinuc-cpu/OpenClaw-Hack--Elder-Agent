@@ -9,11 +9,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env`:
-```
-GEMINI_API_KEY=your_google_ai_studio_key
-BACKEND_URL=http://muaaz-server/medication   # optional — forward results automatically
-```
+Edit `.env` with `GEMINI_API_KEY=your_google_ai_studio_key`.
 
 ## Run
 
@@ -31,18 +27,18 @@ Server runs on **http://localhost:5000**
 ```
 
 ### `POST /analyze`
-Multipart file upload:
-```bash
-curl -X POST http://localhost:5000/analyze \
-  -F "file=@pill_bottle.jpg"
-```
-
-### `POST /analyze-base64`
 JSON body with base64-encoded image:
 ```bash
-curl -X POST http://localhost:5000/analyze-base64 \
+curl -X POST http://localhost:5000/analyze \
   -H "Content-Type: application/json" \
   -d '{"image": "<base64string>", "mime_type": "image/jpeg"}'
+```
+
+### `POST /analyze-file`
+Multipart file upload for local testing:
+```bash
+curl -X POST http://localhost:5000/analyze-file \
+  -F "file=@pill_bottle.jpg"
 ```
 
 ### Response (both analyze endpoints)
@@ -50,24 +46,10 @@ curl -X POST http://localhost:5000/analyze-base64 \
 Prescription detected:
 ```json
 {
-  "is_prescription": true,
-  "medication": "Lisinopril",
+  "name": "Lisinopril",
   "dosage": "10mg",
-  "quantity": 3,
-  "refill_needed": true,
-  "confidence": "high",
-  "raw_analysis": "Full Gemini response for debugging"
-}
-```
-
-Not a prescription:
-```json
-{
-  "is_prescription": false,
-  "medication": null,
-  "dosage": null,
-  "quantity": 0,
-  "refill_needed": false,
+  "purpose": "Helps lower blood pressure.",
+  "warnings": "Check with a caregiver or doctor before changing how this is taken.",
   "confidence": "high",
   "raw_analysis": "Full Gemini response for debugging"
 }
@@ -87,6 +69,6 @@ python test_local.py
 
 ## Notes for teammates
 
-- **Muaaz (backend):** POST to `/analyze` with multipart, or `/analyze-base64` with JSON. Set `BACKEND_URL` in `.env` to have results auto-forwarded to your server.
+- **Muaaz (backend):** POST to `/analyze` with base64 JSON. `/analyze-file` is only for local/manual tests.
 - **Muhammad (glasses):** Send the image to Muaaz who will relay it here. Both multipart and base64 are supported.
 - CORS is open to all origins — no header config needed on your end.

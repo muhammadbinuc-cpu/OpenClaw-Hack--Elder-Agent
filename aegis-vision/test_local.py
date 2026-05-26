@@ -41,9 +41,9 @@ def test_health():
 
 
 def test_analyze_file(image_bytes: bytes):
-    print("--- POST /analyze (multipart) ---")
+    print("--- POST /analyze-file (multipart) ---")
     r = httpx.post(
-        f"{BASE_URL}/analyze",
+        f"{BASE_URL}/analyze-file",
         files={"file": ("test.jpg", image_bytes, "image/jpeg")},
         timeout=45.0,
     )
@@ -53,10 +53,10 @@ def test_analyze_file(image_bytes: bytes):
 
 
 def test_analyze_base64(image_bytes: bytes):
-    print("--- POST /analyze-base64 (JSON) ---")
+    print("--- POST /analyze (JSON) ---")
     encoded = base64.b64encode(image_bytes).decode()
     r = httpx.post(
-        f"{BASE_URL}/analyze-base64",
+        f"{BASE_URL}/analyze",
         json={"image": encoded, "mime_type": "image/jpeg"},
         timeout=45.0,
     )

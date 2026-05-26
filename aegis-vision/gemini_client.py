@@ -8,26 +8,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 FALLBACK_RESPONSE = {
-    "medication": "Lisinopril",
+    "name": "Lisinopril",
     "dosage": "10mg",
-    "quantity": 3,
-    "refill_needed": True,
+    "purpose": "Helps lower blood pressure.",
+    "warnings": "Check with a caregiver or doctor before changing how this is taken.",
     "confidence": "fallback",
     "raw_analysis": "Gemini API unavailable — using hardcoded fallback response",
 }
 
 GEMINI_PROMPT = (
     "You are analyzing an image for an elderly care AI agent called Aegis. "
-    "First determine whether the image shows a prescription medication label or pill bottle. "
+    "Identify the medication from a prescription label, pill bottle, or package. "
     "Return ONLY a valid JSON object — no markdown, no code fences, no explanation.\n\n"
     "Always include:\n"
-    '  "is_prescription": true if the image clearly shows a prescription medication or pill bottle, false for anything else (boolean)\n\n'
-    "If is_prescription is true, also include:\n"
-    '  "medication": full medication name (string)\n'
+    '  "name": full medication name, or "Unknown" if unclear (string)\n'
     '  "dosage": dosage including units, e.g. "10mg" (string)\n'
-    '  "quantity": estimated number of pills remaining (integer; estimate visually if not printed)\n'
-    '  "refill_needed": true if quantity is 5 or less, otherwise false (boolean)\n\n'
-    "If is_prescription is false, set medication to null, dosage to null, quantity to 0, refill_needed to false.\n"
+    '  "purpose": short plain-language purpose of the medication (string)\n'
+    '  "warnings": short safety warning for an elderly dementia patient (string)\n'
+    '  "confidence": number from 0 to 1, or "low", "medium", "high" (number|string)\n\n'
+    "If the image is not a medication, set name to Unknown, dosage to Unknown, "
+    "purpose to Unable to identify, warnings to Ask a caregiver to verify, and confidence to low.\n"
     "Return raw JSON only."
 )
 
@@ -39,19 +39,22 @@ def _client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-NOT_A_PRESCRIPTION = {"error": "not a proper prescription"}
-
-
 def _parse(text: str) -> dict:
     cleaned = re.sub(r"```(?:json)?", "", text).strip()
     data = json.loads(cleaned)
-    if not data.get("is_prescription", False):
-        return NOT_A_PRESCRIPTION.copy()
+
+    confidence = data.get("confidence", "medium")
+    if isinstance(confidence, (int, float)):
+        confidence = max(0.0, min(float(confidence), 1.0))
+    else:
+        confidence = str(confidence or "medium")
+
     return {
-        "medication": str(data["medication"]) if data.get("medication") else "Unknown",
+        "name": str(data.get("name") or data.get("medication") or "Unknown"),
         "dosage": str(data["dosage"]) if data.get("dosage") else "Unknown",
-        "quantity": int(data.get("quantity", 0)),
-        "refill_needed": bool(data.get("refill_needed", False)),
+        "purpose": str(data.get("purpose") or "Ask a caregiver or pharmacist to verify."),
+        "warnings": str(data.get("warnings") or "Do not change medication without checking with a caregiver."),
+        "confidence": confidence,
     }
 
 
@@ -72,9 +75,7 @@ def analyze_image_bytes(image_bytes: bytes, mime_type: str = "image/jpeg") -> di
         print(f"[gemini] raw response: {raw_text}")
 
         result = _parse(raw_text)
-        if "error" not in result:
-            result["confidence"] = "high"
-            result["raw_analysis"] = raw_text
+        result["raw_analysis"] = raw_text
         return result
 
     except json.JSONDecodeError as e:
