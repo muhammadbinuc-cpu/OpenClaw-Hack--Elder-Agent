@@ -41,6 +41,10 @@ def _is_simulation_enabled() -> bool:
     return os.getenv("AEGIS_SIMULATE_VISION", "").strip().lower() in {"1", "true", "yes"}
 
 
+def _auto_refill_enabled() -> bool:
+    return os.getenv("AEGIS_AUTO_REFILL", "").strip().lower() in {"1", "true", "yes"}
+
+
 SendMessage = Callable[[str, str, str], None]
 ORDER_INTENT_PATTERN = re.compile(
     r"\b(order(?:\s+more)?|refill|buy|request(?:\s+a)?\s+refill)\b",
@@ -106,8 +110,8 @@ async def analyze_medication_with_fallback(image_bytes: bytes, mime_type: str) -
     try:
         return await analyze_medication(image_bytes, mime_type)
     except Exception as exc:
-        print(f"[photo] vision analysis failed, using fallback medication: {exc}")
-        log_alert("vision_analysis_failed", f"Vision analysis failed; using demo fallback. Error: {exc}")
+        print(f"[photo] vision analysis failed, routing photo to review path: {exc}")
+        log_alert("vision_analysis_failed", f"Vision analysis failed; routed photo to review path. Error: {exc}")
         return FALLBACK_MEDICATION_RESULT.copy()
 
 
@@ -144,8 +148,8 @@ def _quantity(result: dict[str, Any]) -> int | None:
 
 def _logged_reply_fallback(medication_label: str) -> str:
     return (
-        f"I could not read the photo clearly, so I used the demo fallback: {medication_label}. "
-        "I logged it. Say the name of the medicine and I'll order it."
+        "I could not read the photo clearly enough to confirm the medicine. "
+        "I logged it for your caregiver to review."
     )
 
 
@@ -164,12 +168,25 @@ def _offer_refill_reply(medication_label: str, quantity: int | None) -> str:
     return f"I found {medication_label}. I logged it. Reply 'yes' to order a refill."
 
 
+def _auto_refill_reply(medication_label: str, quantity: int | None) -> str:
+    if quantity is not None:
+        return (
+            f"I found {medication_label}. Only about {quantity} pills left — "
+            "placing a refill for you now."
+        )
+    return f"I found {medication_label}. Placing a refill for you now."
+
+
 def _order_reply(medication_label: str) -> str:
     return f"I found {medication_label}. I placed a refill request."
 
 
 def _unknown_order_reply() -> str:
     return "I could not identify that medicine clearly enough to request a refill. I logged it for your caregiver to review."
+
+
+def _unknown_logged_reply() -> str:
+    return "I could not identify that medicine clearly. I logged it for your caregiver to review."
 
 
 def _not_prescription_reply() -> str:
@@ -180,6 +197,44 @@ def _duplicate_reply(medication_label: str) -> str:
     if medication_label:
         return f"I already saw that {medication_label} — still logged."
     return "I already saw that one — still logged."
+
+
+def _short_tx_hash(tx_hash: str) -> str:
+    if len(tx_hash) <= 22:
+        return tx_hash
+    return f"{tx_hash[:10]}...{tx_hash[-8:]}"
+
+
+def _order_receipt(
+    *,
+    order_id: int,
+    medication: str,
+    dosage: str,
+    payment_result: Any,
+) -> str:
+    raw_response = payment_result.raw_response if isinstance(payment_result.raw_response, dict) else {}
+    medication_label = f"{medication} {dosage}".strip()
+    lines = [
+        "The refill request is confirmed.",
+        "",
+        f"Receipt #{order_id}",
+        f"Medicine: {medication_label}",
+        "Status: confirmed",
+    ]
+
+    amount_btc = raw_response.get("amount_btc")
+    if amount_btc:
+        lines.append(f"Amount: {amount_btc} BTC")
+
+    tx_hash = payment_result.tx_hash
+    if tx_hash:
+        lines.append(f"Transaction: {_short_tx_hash(tx_hash)}")
+
+    goat_scan_url = raw_response.get("goatScanUrl")
+    if goat_scan_url:
+        lines.append(f"Proof: {goat_scan_url}")
+
+    return "\n".join(lines)
 
 
 async def place_mock_or_live_order(
@@ -203,9 +258,19 @@ async def place_mock_or_live_order(
         agent_response=payment_result.raw_response,
     )
     if payment_result.success and payment_result.status == "mock_confirmed":
-        confirmation = "The refill request is confirmed in demo mode."
+        confirmation = _order_receipt(
+            order_id=order_id,
+            medication=medication,
+            dosage=dosage,
+            payment_result=payment_result,
+        )
     elif payment_result.success:
-        confirmation = "The refill request is confirmed."
+        confirmation = _order_receipt(
+            order_id=order_id,
+            medication=medication,
+            dosage=dosage,
+            payment_result=payment_result,
+        )
     else:
         confirmation = "I placed the refill request, but the payment agent could not confirm it yet."
         log_alert("payment_agent_failed", f"Order #{order_id} could not be confirmed: {payment_result.message}")
@@ -343,12 +408,26 @@ async def process_photo_message(
             return
 
         if is_unknown:
-            reply = _logged_reply_known(medication_label, quantity)
+            reply = _unknown_logged_reply()
             log_interaction(body or "Photo message", reply, "log_medication")
             send_message(from_number, reply, base_url)
             return
 
         if refill_needed:
+            if _auto_refill_enabled():
+                reply = _auto_refill_reply(medication_label, quantity)
+                log_interaction(body or "Photo message", reply, "auto_refill")
+                send_message(from_number, reply, base_url)
+                await place_mock_or_live_order(
+                    from_number=from_number,
+                    medication=med_name,
+                    dosage=dosage,
+                    med_log_id=med_log_id,
+                    reason=f"auto_refill (refill_needed=True); body={body!r}",
+                    base_url=base_url,
+                    send_message=send_message,
+                )
+                return
             offer = _offer_refill_reply(medication_label, quantity)
             set_pending_order(from_number, med_log_id, med_name, dosage)
             log_interaction(body or "Photo message", offer, "log_medication")

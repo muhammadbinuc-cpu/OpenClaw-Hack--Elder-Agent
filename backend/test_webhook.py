@@ -26,6 +26,10 @@ class WebhookTests(unittest.TestCase):
             "TWILIO_WHATSAPP_NUMBER": os.environ.get("TWILIO_WHATSAPP_NUMBER"),
             "ANTHROPIC_API_KEY": os.environ.get("ANTHROPIC_API_KEY"),
             "PUBLIC_BASE_URL": os.environ.get("PUBLIC_BASE_URL"),
+            "AEGIS_AUTO_REFILL": os.environ.get("AEGIS_AUTO_REFILL"),
+            "AEGIS_SYNC_PHOTO_REPLY": os.environ.get("AEGIS_SYNC_PHOTO_REPLY"),
+            "AEGIS_SEND_VOICE_NOTE": os.environ.get("AEGIS_SEND_VOICE_NOTE"),
+            "ORDER_AMOUNT_BTC": os.environ.get("ORDER_AMOUNT_BTC"),
         }
         db_path = Path(self._tmpdir.name) / "aegis.db"
         os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
@@ -34,6 +38,10 @@ class WebhookTests(unittest.TestCase):
         os.environ.pop("TWILIO_AUTH_TOKEN", None)
         os.environ.pop("TWILIO_WHATSAPP_NUMBER", None)
         os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ["AEGIS_AUTO_REFILL"] = "false"
+        os.environ["AEGIS_SYNC_PHOTO_REPLY"] = "false"
+        os.environ["AEGIS_SEND_VOICE_NOTE"] = "true"
+        os.environ.pop("ORDER_AMOUNT_BTC", None)
         os.environ["PUBLIC_BASE_URL"] = "http://test.local"
 
         for module in ("db", "photo_flow", "order_agent", "agent", "main"):
@@ -124,6 +132,38 @@ class WebhookTests(unittest.TestCase):
         self.assertEqual(self._count("med_logs"), 1)
         self.assertEqual(self._count("pending_orders"), 1)
 
+    def test_sync_photo_reply_returns_final_result_in_twiml(self) -> None:
+        os.environ["AEGIS_SYNC_PHOTO_REPLY"] = "true"
+        voice_notes: list[tuple[str, str, str]] = []
+        self.main.send_whatsapp_voice_note = lambda to_number, text, base_url: voice_notes.append(
+            (to_number, text, base_url)
+        )
+        self._patch_photo_io(result={
+            "medication": "Lisinopril",
+            "dosage": "10mg",
+            "quantity": 3,
+            "refill_needed": True,
+            "confidence": "high",
+        })
+
+        response = self.client.post(
+            "/webhook/whatsapp",
+            data={
+                "From": "whatsapp:+15551112222",
+                "Body": "what is this",
+                "NumMedia": "1",
+                "MediaUrl0": "https://example.com/p.jpg",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("I found Lisinopril 10mg", response.text)
+        self.assertNotIn("checking that medicine now", response.text)
+        self.assertEqual(self._count("med_logs"), 1)
+        self.assertEqual(self._count("pending_orders"), 1)
+        self.assertEqual(len(voice_notes), 1)
+        self.assertIn("I found Lisinopril 10mg", voice_notes[0][1])
+
     def test_yes_after_offer_places_mock_order(self) -> None:
         self._patch_photo_io(result={
             "medication": "Lisinopril",
@@ -152,7 +192,9 @@ class WebhookTests(unittest.TestCase):
         self.assertEqual(self._count("pending_orders"), 0)
         self.assertEqual(self._count("order_requests"), 1)
         orders = self.client.get("/api/order-requests").json()
-        self.assertEqual(orders[0]["status"], "mock_confirmed")
+        self.assertEqual(orders[0]["status"], "confirmed")
+        self.assertNotIn("mock", str(orders[0]).lower())
+        self.assertNotIn("demo", str(orders[0]).lower())
         stats = self.client.get("/api/stats").json()
         self.assertGreaterEqual(stats["confirmed_orders"], 1)
 

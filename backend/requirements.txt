@@ -7,3 +7,5 @@ gTTS>=2.5.0
 pydantic>=2.0.0
 anthropic>=0.40.0
 python-multipart>=0.0.9
+web3>=6.0
+eth-account>=0.10

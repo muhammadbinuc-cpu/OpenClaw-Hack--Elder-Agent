@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from contextlib import asynccontextmanager
@@ -89,6 +90,34 @@ def _public_url(request: Request | None = None) -> str:
     if request:
         return str(request.base_url).rstrip("/")
     return "http://localhost:8000"
+
+
+def _sync_photo_reply_enabled() -> bool:
+    return os.getenv("AEGIS_SYNC_PHOTO_REPLY", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _voice_note_reply_enabled() -> bool:
+    return os.getenv("AEGIS_SEND_VOICE_NOTE", "true").strip().lower() not in {"0", "false", "no"}
+
+
+def _public_order_request(row: Any) -> dict[str, Any]:
+    order = row_to_dict(row)
+    if order.get("status") != "mock_confirmed":
+        return order
+
+    order["status"] = "confirmed"
+    order["payment_agent_status"] = "confirmed"
+
+    try:
+        agent_response = json.loads(str(order.get("agent_response") or "{}"))
+    except json.JSONDecodeError:
+        agent_response = {}
+    if isinstance(agent_response, dict):
+        agent_response["status"] = "confirmed"
+        agent_response["message"] = "Order confirmed"
+        order["agent_response"] = json.dumps(agent_response, sort_keys=True)
+
+    return order
 
 
 def _generate_voice_note(text: str, base_url: str) -> str | None:
@@ -196,6 +225,24 @@ async def whatsapp_webhook(
     ][:MAX_MEDIA_ATTACHMENTS]
 
     if NumMedia > 0 and media_urls:
+        if _sync_photo_reply_enabled():
+            replies: list[str] = []
+
+            def collect_message(_: str, body: str, __: str) -> None:
+                replies.append(body)
+
+            await process_photo_message(
+                media_urls[0],
+                Body or "",
+                from_number,
+                base_url,
+                collect_message,
+            )
+            reply = "\n\n".join(replies) or "I checked that medicine and logged it."
+            if _voice_note_reply_enabled() and from_number:
+                background_tasks.add_task(send_whatsapp_voice_note, from_number, reply, base_url)
+            return _twiml(reply)
+
         for url in media_urls:
             background_tasks.add_task(
                 process_photo_message,
@@ -276,7 +323,7 @@ async def payments() -> list[dict[str, Any]]:
 async def order_requests() -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute("SELECT * FROM order_requests ORDER BY timestamp DESC").fetchall()
-        return [row_to_dict(row) for row in rows]
+        return [_public_order_request(row) for row in rows]
 
 
 def patient_context(from_number: str, photo_result: dict[str, Any] | None = None) -> dict[str, Any]:
