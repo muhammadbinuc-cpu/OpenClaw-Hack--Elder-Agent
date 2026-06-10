@@ -1,12 +1,11 @@
 import Navbar from '../components/Navbar'
 import Hero from '../components/Hero'
 import DataFlow from '../components/DataFlow'
+import RunDemo from '../components/RunDemo'
 import HowItWorksSection from '../components/HowItWorks'
 import X402Handshake from '../components/X402Handshake'
-import TechStack from '../components/TechStack'
 import DashboardPreview from '../components/DashboardPreview'
-import PoweredBy from '../components/PoweredBy'
-import Team from '../components/Team'
+import TechStack from '../components/TechStack'
 import Footer from '../components/Footer'
 
 export default function Landing() {
@@ -15,12 +14,11 @@ export default function Landing() {
       <Navbar />
       <Hero />
       <DataFlow />
+      <RunDemo />
       <HowItWorksSection />
       <X402Handshake />
-      <TechStack />
       <DashboardPreview />
-      <PoweredBy />
-      <Team />
+      <TechStack />
       <Footer />
     </div>
   )

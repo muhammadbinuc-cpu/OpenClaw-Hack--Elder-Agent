@@ -1,7 +1,16 @@
 import { motion } from 'framer-motion'
 import { Camera, ScanEye, ShieldCheck, Coins } from 'lucide-react'
 import CodePanel from './CodePanel'
-import captureImg from '../assets/img/p-facerec.jpg'
+
+const captureLines = [
+  '<span class="tok-com"># inbound from Meta Ray-Ban → WhatsApp</span>',
+  '<span class="tok-key">POST</span> /webhook/whatsapp',
+  'From      = <span class="tok-str">whatsapp:+1•••</span>',
+  'NumMedia  = <span class="tok-num">1</span>',
+  'MediaUrl0 = <span class="tok-str">…twilio.com/…/Media/ME…</span>',
+  '',
+  '<span class="tok-com"># sha256 dedup → forward to vision</span>',
+]
 
 const visionLines = [
   '<span class="tok-com">// strict JSON, no prose</span>',
@@ -39,7 +48,7 @@ const steps = [
   {
     n: '01', icon: Camera, title: 'Capture',
     desc: 'The patient holds a pill bottle up to their Meta Ray-Ban glasses and says “send to Aegis.” The photo arrives over WhatsApp via a Twilio webhook, deduped by SHA-256.',
-    image: true,
+    panel: { method: 'POST', title: '/webhook/whatsapp', lines: captureLines },
   },
   {
     n: '02', icon: ScanEye, title: 'See',
@@ -70,7 +79,7 @@ export default function HowItWorksSection() {
         </div>
 
         <div className="flex flex-col gap-16 md:gap-24">
-          {steps.map(({ n, icon: Icon, title, desc, panel, image }, i) => (
+          {steps.map(({ n, icon: Icon, title, desc, panel }, i) => (
             <div key={n} className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center ${i % 2 ? 'md:[direction:rtl]' : ''}`}>
               {/* copy */}
               <motion.div
@@ -93,25 +102,7 @@ export default function HowItWorksSection() {
 
               {/* visual */}
               <div className="[direction:ltr]">
-                {image ? (
-                  <motion.div
-                    className="relative overflow-hidden rounded-2xl"
-                    style={{ border: '1px solid var(--border-2)', boxShadow: '0 30px 70px rgba(0,0,0,0.5)' }}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true, margin: '-80px' }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    <img src={captureImg} alt="Smart glasses vision capture" className="w-full h-[300px] object-cover" />
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, rgba(46,107,255,0.22), transparent 50%), linear-gradient(0deg, rgba(7,8,13,0.5), transparent 60%)' }} />
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full px-2.5 py-1"
-                      style={{ background: 'rgba(7,8,13,0.65)', border: '1px solid var(--border-2)', backdropFilter: 'blur(6px)' }}>
-                      <span className="mono" style={{ fontSize: 9.5, color: '#E8ECF4', letterSpacing: '0.1em' }}>WHATSAPP · TWILIO</span>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <CodePanel method={panel.method} title={panel.title} status={panel.status} lines={panel.lines} />
-                )}
+                <CodePanel method={panel.method} title={panel.title} status={panel.status} lines={panel.lines} />
               </div>
             </div>
           ))}

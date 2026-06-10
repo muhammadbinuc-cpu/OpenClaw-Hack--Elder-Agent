@@ -4,7 +4,7 @@
 
 **An AI-powered multi-agent system that turns a Meta Ray-Ban glasses photo into an autonomous, blockchain-verified medication-refill workflow — for elderly patients with dementia.**
 
-🔗 **Live demo:** https://aegis-guardian-ashen.vercel.app
+🔗 **Live demo:** https://aegis-guardian-ai.vercel.app
 
 ---
 
@@ -28,24 +28,21 @@ to protect a vulnerable population from both missed doses and financial fraud.
 
 ```
 [Meta Glasses] ──image──▶ [Vision API] ──JSON──▶ [Backend Orchestrator]
-  Muhammad                    Farill                     Muaaz
                                                           │
                                                           ▼
                                                 [ElderAgent + PharmacyAgent]
-                                                     Ibrahim (ClawUp)
                                                           │
                                                           ▼
-                                                [Guardian Dashboard]
-                                                      Abdullah
+                                                  [Guardian Dashboard]
 ```
 
-| # | Piece | Owner | Stack |
-|---|-------|-------|-------|
-| 1 | Meta Ray-Ban glasses → photo capture | Muhammad | Meta Ray-Ban, WhatsApp |
-| 2 | Vision API — label extraction | Farill | FastAPI, Gemini Vision |
-| 3 | Backend orchestrator | Muaaz | FastAPI, Twilio, SQLite |
-| 4 | ElderAgent + PharmacyAgent | Ibrahim | ClawUp, x402, ERC-8004, AgentKit |
-| 5 | Guardian Dashboard | Abdullah | React, Vite, Three.js |
+| # | Piece | Stack |
+|---|-------|-------|
+| 1 | Meta Ray-Ban glasses → photo capture | Meta Ray-Ban, WhatsApp |
+| 2 | Vision API — label extraction | FastAPI, Gemini Vision |
+| 3 | Backend orchestrator | FastAPI, Twilio, SQLite |
+| 4 | ElderAgent + PharmacyAgent | x402, ERC-8004, AgentKit |
+| 5 | Guardian Dashboard | React, Vite |
 
 ## Tech stack
 

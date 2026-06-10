@@ -16,16 +16,14 @@ export default function DataFlow() {
       <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% -10%, rgba(46,107,255,0.10), transparent 60%)' }} />
 
       <div className="relative mx-auto max-w-6xl px-6 md:px-10 py-20 md:py-28">
-        <div className="flex flex-col gap-3 mb-12 md:mb-16">
-          <span className="mono" style={{ fontSize: 11, color: 'var(--accent-2)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-            End-to-end pipeline
-          </span>
+        <div className="flex flex-col gap-4 mb-12 md:mb-16">
+          <span className="eyebrow">Architecture</span>
           <h2 className="t-headline" style={{ color: 'var(--text)' }}>
-            From a glance to a refill,<br />in one autonomous pass.
+            Six services. One autonomous pass.
           </h2>
           <p className="t-body max-w-xl" style={{ color: 'var(--muted)' }}>
-            Six services, five teammates, zero manual steps. Every hop is a real running
-            service — here's the exact path a pill-bottle photo travels.
+            Every hop is a real running service. Here's the exact path a pill-bottle photo
+            travels — from the glasses to an on-chain receipt.
           </p>
         </div>
 
