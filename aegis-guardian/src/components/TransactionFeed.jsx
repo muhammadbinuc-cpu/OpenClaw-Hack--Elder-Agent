@@ -113,8 +113,8 @@ export default function TransactionFeed() {
               {/* Icon — swap on hover */}
               <motion.div animate={{ x: isHovered ? 2 : 0 }} transition={{ duration: 0.15 }}>
                 {isHovered
-                  ? <ArrowRight size={18} style={{ color: '#14B8A6' }} strokeWidth={1.8} />
-                  : <ArrowUpRight size={18} style={{ color: '#14B8A6' }} strokeWidth={1.8} />
+                  ? <ArrowRight size={18} style={{ color: '#2E6BFF' }} strokeWidth={1.8} />
+                  : <ArrowUpRight size={18} style={{ color: '#2E6BFF' }} strokeWidth={1.8} />
                 }
               </motion.div>
 

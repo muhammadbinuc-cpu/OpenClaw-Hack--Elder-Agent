@@ -9,7 +9,7 @@ const agents = [
 ]
 
 function repColor(score) {
-  if (score >= 80) return '#14B8A6'
+  if (score >= 80) return '#2E6BFF'
   if (score >= 50) return '#D97706'
   return '#DC2626'
 }
@@ -61,7 +61,7 @@ function AgentCard({ agent }) {
         <a
           href="#"
           className="flex items-center gap-1 text-[10px] font-medium transition-opacity hover:opacity-60"
-          style={{ color: '#14B8A6' }}
+          style={{ color: '#2E6BFF' }}
         >
           <ExternalLink size={9} />
           View ↗

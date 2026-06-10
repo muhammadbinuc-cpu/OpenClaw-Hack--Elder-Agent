@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Sun, Moon, Menu, X, Trophy } from 'lucide-react'
+import { motion, useScroll, useTransform } from 'framer-motion'
+import { useTheme } from '../context/ThemeContext'
 
 const REPO_URL = 'https://github.com/muhammadbinuc-cpu/OpenClaw-Hack--Elder-Agent'
 
@@ -11,22 +13,20 @@ function GithubMark({ size = 14 }) {
     </svg>
   )
 }
-import { motion, useScroll, useTransform } from 'framer-motion'
-import { useTheme } from '../context/ThemeContext'
 
 function AegisLogo() {
   return (
     <svg width="17" height="20" viewBox="0 0 17 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path
         d="M8.5 1L1.5 3.8V9.5C1.5 13.8 4.6 17.6 8.5 19C12.4 17.6 15.5 13.8 15.5 9.5V3.8L8.5 1Z"
-        stroke="#00c896"
+        stroke="#2E6BFF"
         strokeWidth="1.2"
         strokeLinejoin="round"
         fill="none"
       />
       <path
         d="M5.5 9.8L7.3 11.8L11.5 7.2"
-        stroke="#00c896"
+        stroke="#2E6BFF"
         strokeWidth="1.2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -45,8 +45,8 @@ export default function Navbar() {
   const { dark, toggle } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const { scrollY } = useScroll()
-  const navBg = useTransform(scrollY, [0, 60], ['rgba(10,10,10,0)', 'rgba(10,10,10,0.97)'])
-  const borderColor = useTransform(scrollY, [0, 60], ['rgba(26,26,26,0)', 'rgba(26,26,26,1)'])
+  const navBg = useTransform(scrollY, [0, 60], ['rgba(7,8,13,0)', 'rgba(7,8,13,0.88)'])
+  const borderColor = useTransform(scrollY, [0, 60], ['rgba(27,35,51,0)', 'rgba(27,35,51,1)'])
   const boxShadow = useTransform(scrollY, [0, 60], ['0 0 0 rgba(0,0,0,0)', '0 8px 40px rgba(0,0,0,0.55)'])
 
   return (

@@ -30,7 +30,7 @@ const initialCards = [
 ]
 
 function RepBar({ score }) {
-  const color = score >= 80 ? '#14B8A6' : score >= 50 ? '#D97706' : '#DC2626'
+  const color = score >= 80 ? '#2E6BFF' : score >= 50 ? '#D97706' : '#DC2626'
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm font-medium tabular-nums" style={{ color: '#FAF9F7' }}>
@@ -149,7 +149,7 @@ function ApprovalCard({ card, onResolve }) {
                   <button
                     onClick={() => handle('approved')}
                     className="rounded-lg py-2.5 text-xs font-semibold uppercase tracking-[0.08em] text-white transition-opacity hover:opacity-80"
-                    style={{ backgroundColor: '#14B8A6' }}
+                    style={{ backgroundColor: '#2E6BFF' }}
                   >
                     Approve ✓
                   </button>

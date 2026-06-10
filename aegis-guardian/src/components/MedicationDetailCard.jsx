@@ -26,7 +26,7 @@ const statusConfig = {
 }
 
 function ReputationBar({ score }) {
-  const color = score >= 80 ? '#14B8A6' : score >= 50 ? '#D97706' : '#DC2626'
+  const color = score >= 80 ? '#2E6BFF' : score >= 50 ? '#D97706' : '#DC2626'
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm font-medium" style={{ color: '#FAF9F7' }}>{score} / 100</span>
@@ -83,7 +83,7 @@ function InfoRow({ label, children, tooltipKey, hoveredRow, onEnter, onLeave }) 
       style={{
         gridTemplateColumns: '140px 1fr',
         borderColor: '#3D3835',
-        borderLeft: isHovered ? '2px solid #14B8A6' : '2px solid transparent',
+        borderLeft: isHovered ? '2px solid #2E6BFF' : '2px solid transparent',
         paddingLeft: isHovered ? 14 : 16,
         opacity: isDimmed ? 0.4 : 1,
         transition: 'opacity 0.2s ease, border-color 0.2s ease, padding-left 0.2s ease',
@@ -118,20 +118,20 @@ export default function MedicationDetailCard() {
         style={{
           maxWidth: 600,
           backgroundColor: '#292524',
-          border: '1px solid rgba(20,184,166,0.2)',
+          border: '1px solid rgba(46,107,255,0.2)',
         }}
         animate={{
           y: cardHovered ? -8 : 0,
           boxShadow: cardHovered
-            ? '0 24px 64px rgba(0,0,0,0.6), 0 0 40px rgba(20,184,166,0.15)'
-            : '0 4px 24px rgba(0,0,0,0.3), 0 0 0px rgba(20,184,166,0)',
+            ? '0 24px 64px rgba(0,0,0,0.6), 0 0 40px rgba(46,107,255,0.15)'
+            : '0 4px 24px rgba(0,0,0,0.3), 0 0 0px rgba(46,107,255,0)',
         }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
         onMouseEnter={() => setCardHovered(true)}
         onMouseLeave={() => { setCardHovered(false); setHoveredRow(null) }}
       >
         {/* Top edge glow */}
-        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.4), transparent)' }} />
+        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(46,107,255,0.4), transparent)' }} />
 
         <div className="px-8 pt-8 pb-6">
           {/* Medication display name */}
@@ -208,7 +208,7 @@ export default function MedicationDetailCard() {
             <a
               href="#"
               className="flex items-center gap-1 text-[10px] font-medium transition-opacity hover:opacity-60"
-              style={{ color: '#14B8A6' }}
+              style={{ color: '#2E6BFF' }}
             >
               <ExternalLink size={10} />
               View transaction on GoatScan ↗

@@ -7,10 +7,10 @@ function MockCard() {
   return (
     <div className="rounded-2xl overflow-hidden w-full" style={{
       backgroundColor: '#1a1a1a',
-      border: '1px solid rgba(20,184,166,0.3)',
-      boxShadow: '0 0 40px rgba(20,184,166,0.1), inset 0 0 40px rgba(20,184,166,0.03)',
+      border: '1px solid rgba(46,107,255,0.3)',
+      boxShadow: '0 0 40px rgba(46,107,255,0.1), inset 0 0 40px rgba(46,107,255,0.03)',
     }}>
-      <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.45), transparent)' }} />
+      <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(46,107,255,0.45), transparent)' }} />
 
       <div className="flex items-center gap-1.5 px-5 py-3.5 border-b" style={{ borderColor: '#2a2a2a' }}>
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#DC2626', opacity: 0.7 }} />
@@ -25,7 +25,7 @@ function MockCard() {
         <div className="flex items-center justify-between rounded-lg px-4 py-3" style={{ backgroundColor: '#222', border: '1px solid #2e2e2e' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-7 w-7 items-center justify-center rounded-md" style={{ backgroundColor: '#2a2a2a' }}>
-              <Pill size={13} style={{ color: '#14B8A6' }} />
+              <Pill size={13} style={{ color: '#2E6BFF' }} />
             </div>
             <div>
               <p className="text-xs font-medium" style={{ color: '#FAF9F7' }}>Lisinopril 10mg</p>
@@ -41,14 +41,14 @@ function MockCard() {
         <div className="flex items-center justify-between rounded-lg px-4 py-3" style={{ backgroundColor: '#222', border: '1px solid #2e2e2e' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-7 w-7 items-center justify-center rounded-md" style={{ backgroundColor: '#2a2a2a' }}>
-              <ShieldCheck size={13} style={{ color: '#14B8A6' }} />
+              <ShieldCheck size={13} style={{ color: '#2E6BFF' }} />
             </div>
             <div>
               <p className="text-xs font-medium" style={{ color: '#FAF9F7' }}>Shoppers Drug Mart</p>
               <p className="text-[10px]" style={{ color: '#6b6b6b' }}>Reputation 98/100 · ERC-8004</p>
             </div>
           </div>
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(20,184,166,0.1)', color: '#14B8A6' }}>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'rgba(46,107,255,0.1)', color: '#2E6BFF' }}>
             Trusted
           </span>
         </div>
@@ -63,8 +63,8 @@ function MockCard() {
         </div>
 
         <div className="flex items-center gap-1 px-1 pt-1">
-          <ExternalLink size={10} style={{ color: '#14B8A6', opacity: 0.7 }} />
-          <span className="text-[10px]" style={{ color: '#14B8A6', opacity: 0.7 }}>View on GoatScan ↗</span>
+          <ExternalLink size={10} style={{ color: '#2E6BFF', opacity: 0.7 }} />
+          <span className="text-[10px]" style={{ color: '#2E6BFF', opacity: 0.7 }}>View on GoatScan ↗</span>
         </div>
       </div>
     </div>

@@ -24,7 +24,7 @@ export default function TrustBar() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
-            whileHover={{ y: -3, borderColor: 'rgba(0,200,150,0.28)', boxShadow: '0 0 28px rgba(0, 200, 150, 0.13)' }}
+            whileHover={{ y: -3, borderColor: 'rgba(46,107,255,0.28)', boxShadow: '0 0 28px rgba(46,107,255, 0.13)' }}
           >
             <div
               aria-hidden="true"
@@ -34,14 +34,14 @@ export default function TrustBar() {
                 left: 0,
                 right: 0,
                 height: 1,
-                background: 'linear-gradient(90deg, transparent, rgba(0,200,150,0.55), transparent)',
+                background: 'linear-gradient(90deg, transparent, rgba(46,107,255,0.55), transparent)',
               }}
             />
             <div
               className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ backgroundColor: 'rgba(0,200,150,0.06)', border: '1px solid rgba(0,200,150,0.14)' }}
+              style={{ backgroundColor: 'rgba(46,107,255,0.06)', border: '1px solid rgba(46,107,255,0.14)' }}
             >
-              <Icon size={16} style={{ color: '#00c896' }} strokeWidth={2} />
+              <Icon size={16} style={{ color: '#2E6BFF' }} strokeWidth={2} />
             </div>
             <span className="text-xs font-medium leading-snug max-w-[130px]" style={{ color: 'var(--muted)' }}>
               {label}

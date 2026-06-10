@@ -47,7 +47,7 @@ export default function PoweredBy() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: i * 0.06 }}
-            whileHover={{ color: '#00c896', y: -2 }}
+            whileHover={{ color: '#2E6BFF', y: -2 }}
           >
             {b.node ?? <span style={{ fontWeight: 600, letterSpacing: '0.01em' }}>{b.label}</span>}
           </motion.div>

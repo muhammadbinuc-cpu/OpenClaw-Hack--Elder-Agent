@@ -40,13 +40,13 @@ function PulseNode() {
     <div className="relative flex items-center justify-center">
       <motion.div
         className="absolute rounded-full"
-        style={{ backgroundColor: 'rgba(20,184,166,0.2)' }}
+        style={{ backgroundColor: 'rgba(46,107,255,0.2)' }}
         animate={{ width: [28, 44, 28], height: [28, 44, 28], opacity: [0.6, 0, 0.6] }}
         transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
       />
       <div
         className="relative rounded-full z-10"
-        style={{ width: 18, height: 18, backgroundColor: '#14B8A6', boxShadow: '0 0 12px rgba(20,184,166,0.6)' }}
+        style={{ width: 18, height: 18, backgroundColor: '#2E6BFF', boxShadow: '0 0 12px rgba(46,107,255,0.6)' }}
       />
     </div>
   )
@@ -120,7 +120,7 @@ export default function TransactionTimeline() {
                 height: 1,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                backgroundColor: '#14B8A6',
+                backgroundColor: '#2E6BFF',
                 width: activeStep === 0 ? '0%'
                   : activeStep >= steps.length - 1 ? '100%'
                   : `${(activeStep / (steps.length - 1)) * 100}%`,
@@ -141,7 +141,7 @@ export default function TransactionTimeline() {
                     ) : state === 'done' ? (
                       <div
                         className="rounded-full"
-                        style={{ width: 12, height: 12, backgroundColor: '#14B8A6' }}
+                        style={{ width: 12, height: 12, backgroundColor: '#2E6BFF' }}
                       />
                     ) : (
                       <div

@@ -1,71 +1,122 @@
-import { useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
-import { Glasses, ScanLine, Bot } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Camera, ScanEye, ShieldCheck, Coins } from 'lucide-react'
+import CodePanel from './CodePanel'
+import captureImg from '../assets/img/p-facerec.jpg'
 
-const steps = [
-  { n: '01', icon: Glasses,  title: 'Glasses scan the bottle',     desc: "Meta smart glasses photograph the prescription label hands-free, right in your parent's home." },
-  { n: '02', icon: ScanLine, title: 'AI identifies the medication', desc: 'Gemini Vision confirms the medication name, dosage, and whether a refill is needed.' },
-  { n: '03', icon: Bot,      title: 'Agent handles the rest',       desc: 'Aegis verifies the pharmacy identity on-chain and pays autonomously — you get notified instantly.' },
+const visionLines = [
+  '<span class="tok-com">// strict JSON, no prose</span>',
+  '{',
+  '  <span class="tok-key">"medication"</span>:    <span class="tok-str">"Lisinopril"</span>,',
+  '  <span class="tok-key">"dosage"</span>:        <span class="tok-str">"10mg"</span>,',
+  '  <span class="tok-key">"quantity"</span>:      <span class="tok-num">3</span>,',
+  '  <span class="tok-key">"refill_needed"</span>: <span class="tok-num">true</span>,',
+  '  <span class="tok-key">"confidence"</span>:    <span class="tok-str">"high"</span>',
+  '}',
 ]
 
-const row = {
-  hidden: { opacity: 0, y: 24 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
-}
+const verifyLines = [
+  '<span class="tok-key">def</span> <span class="tok-fn">verify_agent_identity</span>(wallet):',
+  '    wallet = Web3.to_checksum_address(wallet)',
+  '    <span class="tok-key">if</span> wallet <span class="tok-key">not in</span> TRUSTED_AGENTS:',
+  '        <span class="tok-key">raise</span> IdentityVerificationError(',
+  '            <span class="tok-str">"Refusing to send funds"</span>',
+  '            <span class="tok-str">" — anti-scam protection"</span>)',
+  '    <span class="tok-key">return</span> TRUSTED_AGENTS[wallet]  <span class="tok-com"># 98/100</span>',
+]
+
+const payLines = [
+  '<span class="tok-com">→ POST /refill   (no payment yet)</span>',
+  '<span class="tok-num">402</span> Payment Required',
+  '{ <span class="tok-key">"price"</span>: <span class="tok-str">"0.0001"</span>, <span class="tok-key">"currency"</span>: <span class="tok-str">"BTC"</span>,',
+  '  <span class="tok-key">"network"</span>: <span class="tok-str">"goat-testnet3"</span>, <span class="tok-key">"chainId"</span>: <span class="tok-num">48816</span> }',
+  '',
+  '<span class="tok-com">→ resend  X-Payment-Hash: 0x1a2b3c…</span>',
+  '<span class="tok-num">200</span> OK   <span class="tok-key">"confirmed"</span>: <span class="tok-num">true</span>',
+  '<span class="tok-com"># goatscan.io/tx/0x1a2b3c…</span>',
+]
+
+const steps = [
+  {
+    n: '01', icon: Camera, title: 'Capture',
+    desc: 'The patient holds a pill bottle up to their Meta Ray-Ban glasses and says “send to Aegis.” The photo arrives over WhatsApp via a Twilio webhook, deduped by SHA-256.',
+    image: true,
+  },
+  {
+    n: '02', icon: ScanEye, title: 'See',
+    desc: 'Gemini Vision reads the label and returns strict, schema-validated JSON — medication, dosage, pills remaining, and whether a refill is due. If it isn’t a prescription, it’s rejected.',
+    panel: { method: 'POST', title: '/analyze', status: 200, lines: visionLines },
+  },
+  {
+    n: '03', icon: ShieldCheck, title: 'Verify',
+    desc: 'Before a cent moves, the pharmacy agent’s ERC-8004 identity is checked on GOAT Network. Unregistered wallets are refused outright — autonomous anti-scam protection.',
+    panel: { title: 'agent_pay.py', lines: verifyLines },
+  },
+  {
+    n: '04', icon: Coins, title: 'Pay',
+    desc: 'Payment runs over the x402 protocol: the pharmacy answers 402 Payment Required, Aegis settles a BTC micropayment on GOAT, then resends with the on-chain proof. Caregiver sees the receipt live.',
+    panel: { method: 'POST', title: '/refill', status: 402, lines: payLines },
+  },
+]
 
 export default function HowItWorksSection() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-80px' })
-
   return (
-    <section className="border-t overflow-hidden" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+    <section className="border-t" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--border)' }}>
+      <div className="mx-auto max-w-6xl px-6 md:px-10 py-20 md:py-28">
+        <div className="flex flex-col gap-3 mb-14">
+          <span className="mono" style={{ fontSize: 11, color: 'var(--accent-2)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            How it works
+          </span>
+          <h2 className="t-headline" style={{ color: 'var(--text)' }}>Four steps. All autonomous.</h2>
+        </div>
 
-      {/* Oversized label */}
-      <div className="px-8 md:px-12 pt-10 pb-2 overflow-hidden">
-        <p
-          className="font-light leading-none tracking-tight select-none"
-          style={{
-            fontSize: 'clamp(64px, 10vw, 120px)',
-            color: 'var(--text)',
-            opacity: 0.92,
-            marginLeft: '-0.03em',
-          }}
-        >
-          How it Works
-        </p>
-      </div>
+        <div className="flex flex-col gap-16 md:gap-24">
+          {steps.map(({ n, icon: Icon, title, desc, panel, image }, i) => (
+            <div key={n} className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center ${i % 2 ? 'md:[direction:rtl]' : ''}`}>
+              {/* copy */}
+              <motion.div
+                className="flex flex-col gap-4 [direction:ltr]"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="mono" style={{ fontSize: 13, color: 'var(--faint)' }}>{n}</span>
+                  <div className="flex items-center justify-center h-9 w-9 rounded-xl"
+                    style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-line)' }}>
+                    <Icon size={16} style={{ color: 'var(--accent-2)' }} strokeWidth={1.9} />
+                  </div>
+                </div>
+                <h3 style={{ fontSize: 28, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.02em' }}>{title}</h3>
+                <p className="t-body max-w-md" style={{ color: 'var(--muted)' }}>{desc}</p>
+              </motion.div>
 
-      {/* Rows */}
-      <motion.div
-        ref={ref}
-        className="border-t"
-        style={{ borderColor: 'var(--border)' }}
-        initial="hidden"
-        animate={inView ? 'show' : 'hidden'}
-        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.15 } } }}
-      >
-        {steps.map(({ n, icon: Icon, title, desc }) => (
-          <motion.div
-            key={n}
-            variants={row}
-            className="grid border-b px-8 md:px-12 py-8 items-center gap-4"
-            style={{ borderColor: 'var(--border)', gridTemplateColumns: '3rem 1fr 1fr 3rem' }}
-          >
-            <span className="text-[11px] font-medium tracking-[0.12em] tabular-nums" style={{ color: 'var(--muted)' }}>
-              {n}
-            </span>
-            <h3 className="text-xl md:text-2xl font-light tracking-tight" style={{ color: 'var(--text)' }}>
-              {title}
-            </h3>
-            <p className="text-sm leading-relaxed md:pr-8" style={{ color: 'var(--muted)' }}>
-              {desc}
-            </p>
-            <div className="flex justify-end">
-              <Icon size={28} style={{ color: 'var(--accent)' }} strokeWidth={1.5} />
+              {/* visual */}
+              <div className="[direction:ltr]">
+                {image ? (
+                  <motion.div
+                    className="relative overflow-hidden rounded-2xl"
+                    style={{ border: '1px solid var(--border-2)', boxShadow: '0 30px 70px rgba(0,0,0,0.5)' }}
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true, margin: '-80px' }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <img src={captureImg} alt="Smart glasses vision capture" className="w-full h-[300px] object-cover" />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(120deg, rgba(46,107,255,0.22), transparent 50%), linear-gradient(0deg, rgba(7,8,13,0.5), transparent 60%)' }} />
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                      style={{ background: 'rgba(7,8,13,0.65)', border: '1px solid var(--border-2)', backdropFilter: 'blur(6px)' }}>
+                      <span className="mono" style={{ fontSize: 9.5, color: '#E8ECF4', letterSpacing: '0.1em' }}>WHATSAPP · TWILIO</span>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <CodePanel method={panel.method} title={panel.title} status={panel.status} lines={panel.lines} />
+                )}
+              </div>
             </div>
-          </motion.div>
-        ))}
-      </motion.div>
+          ))}
+        </div>
+      </div>
     </section>
   )
 }

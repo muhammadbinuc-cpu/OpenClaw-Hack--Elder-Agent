@@ -15,17 +15,17 @@ function ShieldGraphic() {
   return (
     <svg viewBox="0 0 160 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[180px] mx-auto">
       <path d="M80 8L16 34V90C16 128 44 160 80 172C116 160 144 128 144 90V34L80 8Z"
-        stroke="rgba(20,184,166,0.35)" strokeWidth="1.5" fill="rgba(20,184,166,0.04)" />
+        stroke="rgba(46,107,255,0.35)" strokeWidth="1.5" fill="rgba(46,107,255,0.04)" />
       <path d="M80 28L34 48V90C34 118 54 142 80 152C106 142 126 118 126 90V48L80 28Z"
-        stroke="rgba(20,184,166,0.25)" strokeWidth="1" fill="rgba(20,184,166,0.03)" />
+        stroke="rgba(46,107,255,0.25)" strokeWidth="1" fill="rgba(46,107,255,0.03)" />
       <path d="M80 48L52 62V90C52 108 64 124 80 132C96 124 108 108 108 90V62L80 48Z"
-        stroke="rgba(20,184,166,0.5)" strokeWidth="1" fill="rgba(20,184,166,0.06)" />
-      <circle cx="80" cy="90" r="5" fill="rgba(20,184,166,0.7)" />
-      <line x1="80" y1="72" x2="80" y2="108" stroke="rgba(20,184,166,0.3)" strokeWidth="1" />
-      <line x1="62" y1="90" x2="98" y2="90" stroke="rgba(20,184,166,0.3)" strokeWidth="1" />
-      <circle cx="80" cy="8"   r="2" fill="rgba(20,184,166,0.4)" />
-      <circle cx="16" cy="34"  r="2" fill="rgba(20,184,166,0.25)" />
-      <circle cx="144" cy="34" r="2" fill="rgba(20,184,166,0.25)" />
+        stroke="rgba(46,107,255,0.5)" strokeWidth="1" fill="rgba(46,107,255,0.06)" />
+      <circle cx="80" cy="90" r="5" fill="rgba(46,107,255,0.7)" />
+      <line x1="80" y1="72" x2="80" y2="108" stroke="rgba(46,107,255,0.3)" strokeWidth="1" />
+      <line x1="62" y1="90" x2="98" y2="90" stroke="rgba(46,107,255,0.3)" strokeWidth="1" />
+      <circle cx="80" cy="8"   r="2" fill="rgba(46,107,255,0.4)" />
+      <circle cx="16" cy="34"  r="2" fill="rgba(46,107,255,0.25)" />
+      <circle cx="144" cy="34" r="2" fill="rgba(46,107,255,0.25)" />
     </svg>
   )
 }
@@ -66,7 +66,7 @@ export default function CTA() {
           viewport={{ once: true, margin: '-80px' }}
         >
           <div className="flex items-center justify-center w-full max-w-xs aspect-square rounded-2xl"
-            style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(20,184,166,0.2)', boxShadow: '0 0 48px rgba(20,184,166,0.08)' }}>
+            style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(46,107,255,0.2)', boxShadow: '0 0 48px rgba(46,107,255,0.08)' }}>
             <ShieldGraphic />
           </div>
         </motion.div>

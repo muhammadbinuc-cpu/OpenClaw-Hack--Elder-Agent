@@ -25,3 +25,4 @@ dist-ssr
 
 # Vendored dev tooling — not part of the app
 .claude
+.vercel

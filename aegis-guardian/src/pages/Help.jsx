@@ -37,7 +37,7 @@ function FAQCard({ q, a, open, onToggle }) {
       className="rounded-lg border cursor-pointer"
       style={{
         backgroundColor: '#292524',
-        borderColor: open ? 'rgba(20,184,166,0.35)' : '#3D3835',
+        borderColor: open ? 'rgba(46,107,255,0.35)' : '#3D3835',
         transition: 'border-color 0.15s ease',
       }}
       onClick={onToggle}
@@ -49,7 +49,7 @@ function FAQCard({ q, a, open, onToggle }) {
         <span
           className="shrink-0 flex items-center justify-center"
           style={{
-            color: '#14B8A6',
+            color: '#2E6BFF',
             transform: open ? 'rotate(45deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
           }}
@@ -127,7 +127,7 @@ export default function Help() {
           <a
             href="mailto:support@aegis.app"
             className="text-sm font-medium transition-opacity hover:opacity-70"
-            style={{ color: '#14B8A6' }}
+            style={{ color: '#2E6BFF' }}
           >
             support@aegis.app ↗
           </a>
