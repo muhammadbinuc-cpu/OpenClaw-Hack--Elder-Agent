@@ -1,6 +1,6 @@
 # Aegis Vision — Piece 2
 
-Gemini Vision API layer for the Aegis elderly care agent. Receives a photo of a pill bottle, identifies the medication, and returns structured JSON to the backend orchestrator.
+Claude vision API layer for the Aegis elderly care agent. Receives a photo of a pill bottle, identifies the medication, and returns structured JSON to the backend orchestrator.
 
 ## Setup
 
@@ -11,7 +11,8 @@ cp .env.example .env
 
 Edit `.env`:
 ```
-GEMINI_API_KEY=your_google_ai_studio_key
+ANTHROPIC_API_KEY=your_anthropic_key
+VISION_PORT=5001
 BACKEND_URL=http://muaaz-server/medication   # optional — forward results automatically
 ```
 
@@ -21,7 +22,7 @@ BACKEND_URL=http://muaaz-server/medication   # optional — forward results auto
 python main.py
 ```
 
-Server runs on **http://localhost:5000**
+Server runs on **http://localhost:5001** by default.
 
 ## Endpoints
 
@@ -33,14 +34,14 @@ Server runs on **http://localhost:5000**
 ### `POST /analyze`
 Multipart file upload:
 ```bash
-curl -X POST http://localhost:5000/analyze \
+curl -X POST http://localhost:5001/analyze \
   -F "file=@pill_bottle.jpg"
 ```
 
 ### `POST /analyze-base64`
 JSON body with base64-encoded image:
 ```bash
-curl -X POST http://localhost:5000/analyze-base64 \
+curl -X POST http://localhost:5001/analyze-base64 \
   -H "Content-Type: application/json" \
   -d '{"image": "<base64string>", "mime_type": "image/jpeg"}'
 ```
@@ -55,7 +56,7 @@ Valid prescription (HTTP 200):
   "quantity": 3,
   "refill_needed": true,
   "confidence": "high",
-  "raw_analysis": "Full Gemini response for debugging"
+  "raw_analysis": "Full Claude response for debugging"
 }
 ```
 
@@ -66,7 +67,7 @@ Not a prescription (HTTP 400):
 }
 ```
 
-`confidence` is `"high"` when Gemini succeeds, `"fallback"` if Gemini fails (server always returns valid JSON).
+`confidence` is `"high"` when Claude succeeds, `"fallback"` if analysis fails and the demo fallback is used.
 
 ## Test
 

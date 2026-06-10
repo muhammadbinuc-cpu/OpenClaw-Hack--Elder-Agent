@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Starting Aegis WhatsApp agent services..."
 echo "Backend: http://localhost:8000"
-echo "Vision:  http://localhost:5000"
+echo "Vision:  http://localhost:5001"
 echo "Twilio webhook for ngrok: https://YOUR-NGROK-DOMAIN/webhook/whatsapp"
 
 trap 'kill 0' EXIT

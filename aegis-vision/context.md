@@ -11,7 +11,7 @@ Aegis is an AI agent system that helps elderly people with dementia manage their
 ## Full System Architecture (5 pieces, 5 team members)
 
 ```
-[Meta Glasses] ──image──▶ [Gemini Vision API] ──JSON──▶ [Backend Orchestrator]
+[Meta Glasses] ──image──▶ [Claude Vision API] ──JSON──▶ [Backend Orchestrator]
   Muhammad                    Farill (THIS)                   Muaaz
                                                                │
                                                                ▼
@@ -27,13 +27,13 @@ Aegis is an AI agent system that helps elderly people with dementia manage their
 - Ray-Ban Meta glasses capture a photo of a pill bottle
 - Streams image to phone, phone sends to Piece 2
 
-### Piece 2 — Gemini Vision API (Farill) ← THIS SERVICE
+### Piece 2 — Claude Vision API (Farill) ← THIS SERVICE
 - Receives image (multipart or base64 JSON)
-- Sends to Gemini 2.5 Flash Vision API
+- Sends to Anthropic Claude vision
 - Checks if image is a valid prescription — if not, returns error
 - Extracts: medication name, dosage, quantity remaining, refill needed
 - Returns structured JSON to Muaaz's backend
-- If Gemini fails → returns hardcoded Lisinopril 10mg fallback
+- If Claude fails → returns hardcoded Lisinopril 10mg fallback
 
 ### Piece 3 — Backend Orchestrator (Muaaz)
 - Receives medication JSON from Piece 2
@@ -78,7 +78,7 @@ Valid prescription (HTTP 200):
   "quantity": 3,
   "refill_needed": true,
   "confidence": "high",
-  "raw_analysis": "Full Gemini response text for debugging"
+  "raw_analysis": "Full Claude response text for debugging"
 }
 ```
 
@@ -89,7 +89,7 @@ Not a prescription (HTTP 400):
 }
 ```
 
-`confidence` values: `"high"` (Gemini succeeded), `"fallback"` (Gemini failed, hardcoded response used)
+`confidence` values: `"high"` (Claude succeeded), `"fallback"` (analysis failed, hardcoded response used)
 
 ---
 
@@ -97,7 +97,7 @@ Not a prescription (HTTP 400):
 
 - Python 3.11+
 - FastAPI + uvicorn
-- google-genai (Gemini 2.5 Flash)
+- anthropic (Claude vision)
 - httpx (async HTTP for forwarding to backend)
 - python-dotenv
 - python-multipart
@@ -106,7 +106,8 @@ Not a prescription (HTTP 400):
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google AI Studio API key |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
+| `VISION_PORT` | No | Service port; defaults to `5001` |
 | `BACKEND_URL` | No | Muaaz's backend endpoint to forward results to |
 
 ---
@@ -117,12 +118,12 @@ Not a prescription (HTTP 400):
 cd aegis-vision
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env and set your GEMINI_API_KEY
+# Edit .env and set your ANTHROPIC_API_KEY
 # Optionally set BACKEND_URL to Muaaz's server
 python main.py
 ```
 
-Server starts on **http://localhost:5000**
+Server starts on **http://localhost:5001** by default.
 
 ### Test it
 
@@ -141,8 +142,8 @@ python test_local.py
 1. Elderly user holds pill bottle up to Meta glasses
 2. Muhammad's glasses capture photo → sends to Muaaz's backend
 3. Muaaz's backend POSTs image to `POST /analyze` on this service
-4. This service sends image to Gemini Vision API
-5. Gemini returns medication name, dosage, quantity
+4. This service sends image to Claude vision
+5. Claude returns medication name, dosage, quantity
 6. This service returns JSON + optionally forwards to `BACKEND_URL`
 7. Muaaz's backend calls Ibrahim's ElderAgent with medication data
 8. ElderAgent verifies pharmacy identity on GOAT Network blockchain
@@ -154,30 +155,29 @@ python test_local.py
 
 ## Fallback Behavior
 
-If Gemini API is unreachable or returns unparseable output, the service returns:
+If Claude is unreachable or returns unparseable output, the service returns:
 ```json
 {
   "medication": "Lisinopril",
   "dosage": "10mg",
   "quantity": 3,
   "refill_needed": true,
-  "confidence": "fallback",
-  "raw_analysis": "Gemini API unavailable — using hardcoded fallback response"
+  "confidence": "fallback"
 }
 ```
-The server never crashes — it always returns a valid medication JSON.
+For API failures, the server returns valid fallback medication JSON. Non-prescription images still return HTTP 400.
 
 ---
 
 ## Hackathon Stack
 
-OpenClaw · ClawUp · ERC-8004 · x402 · GOAT Network · AgentKit · Gemini API · Meta Ray-Ban
+OpenClaw · ClawUp · ERC-8004 · x402 · GOAT Network · AgentKit · Claude Vision · Meta Ray-Ban
 
 ## Team
 
 | Name | Role |
 |------|------|
-| Farill | Gemini Vision API (this service) |
+| Farill | Claude Vision API (this service) |
 | Muhammad | Meta Ray-Ban glasses |
 | Muaaz | Backend orchestrator |
 | Ibrahim | ElderAgent + PharmacyAgent on ClawUp |

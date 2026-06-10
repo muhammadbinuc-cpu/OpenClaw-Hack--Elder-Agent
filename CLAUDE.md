@@ -18,9 +18,9 @@ backend/ FastAPI :8000
   - gTTS voice notes where Twilio/public URL are configured
         |
         v
-aegis-vision/ FastAPI :5000
+aegis-vision/ FastAPI :5001
   - POST /analyze
-  - Gemini medication identification with Lisinopril fallback
+  - Claude medication identification with Lisinopril fallback
 ```
 
 Payment and guardian dashboard are planned but intentionally deferred for now. Ibrahim's `mibrahim20071030-pharmacyagent` branch contains useful future payment-agent context, including `/health` and `/refill`, but the current implementation should not depend on it.
@@ -60,17 +60,17 @@ https://granny-oxford-posh.ngrok-free.dev/webhook/whatsapp
 Local `.env` files are required for live testing and must not be committed:
 
 - `backend/.env`: Twilio SID/token, Twilio WhatsApp sender, Anthropic key, `PUBLIC_BASE_URL`, patient name, DB URL, and vision URL.
-- `aegis-vision/.env`: Gemini API key.
+- `aegis-vision/.env`: Anthropic API key and optional `VISION_PORT`.
 
 Current notes:
 
 - Backend Claude calls use `claude-haiku-4-5-20251001`; older Haiku 3.5 model IDs were rejected by the provided key.
-- The backend extracts JSON from Claude responses before validation.
-- Gemini can hit free-tier quota; the vision service intentionally falls back to Lisinopril 10mg so the demo continues.
+- The backend and vision service extract JSON from Claude responses before validation.
+- Claude vision can fail or hit API limits; the vision service intentionally falls back to Lisinopril 10mg so the demo continues.
 
 ## Tech Stack
 
-- FastAPI, Twilio, Anthropic Claude, Gemini, SQLite, gTTS.
+- FastAPI, Twilio, Anthropic Claude, SQLite, gTTS.
 - OpenClaw, ERC-8004, x402, GOAT Network remain part of the larger hackathon story and payment follow-up.
 
 ## Next Build Steps

@@ -1,66 +1,120 @@
-# Aegis 🛡️
+# Aegis
 
-### 🏆 1st Place — OpenClaw Hackathon 2026 (Toronto Tech Week) · out of 500+ hackers
+AI care-agent prototype for medication support over WhatsApp. The system accepts patient text or medication photos, extracts structured medication data, logs activity, and exposes a caregiver-facing dashboard.
 
-**An AI-powered multi-agent system that turns a Meta Ray-Ban glasses photo into an autonomous, blockchain-verified medication-refill workflow — for elderly patients with dementia.**
-
-🔗 **Live demo:** https://aegis-guardian-ai.vercel.app
-
----
-
-## What it does
-
-An elderly user holds a pill bottle up to their Meta Ray-Ban glasses. From that single
-photo, Aegis:
-
-1. **Reads the label** with vision AI (medication name, dosage, pills remaining, refill need)
-2. **Routes the refill request** through a FastAPI orchestrator to autonomous agents
-3. **Verifies the pharmacy's on-chain identity** (ERC-8004) before trusting it
-4. **Executes a micropayment** via x402 / AgentKit on the GOAT Network — or **blocks the
-   transaction** if the merchant is untrusted (fraud protection)
-5. **Surfaces everything to a caregiver** on the Guardian Dashboard, with human approval on
-   every high-risk action
-
-The result: medication management that's autonomous, verified, and human-approved — built
-to protect a vulnerable population from both missed doses and financial fraud.
+**Live demo:** https://aegis-guardian-ai.vercel.app
 
 ## Architecture
 
 ```
-[Meta Glasses] ──image──▶ [Vision API] ──JSON──▶ [Backend Orchestrator]
-                                                          │
-                                                          ▼
-                                                [ElderAgent + PharmacyAgent]
-                                                          │
-                                                          ▼
-                                                  [Guardian Dashboard]
+Meta Ray-Ban / WhatsApp
+        |
+        v
+Twilio WhatsApp Sandbox
+        |
+        v
+backend/ FastAPI :8000
+  - text intent parsing
+  - photo background tasks
+  - SQLite persistence
+  - outbound Twilio replies
+        |
+        v
+aegis-vision/ FastAPI :5001
+  - prescription-image validation
+  - medication extraction
+  - fallback response for demo continuity
+        |
+        v
+aegis-guardian/ React + Vite
+  - dashboard UI
+  - workflow and transaction views
 ```
 
-| # | Piece | Stack |
-|---|-------|-------|
-| 1 | Meta Ray-Ban glasses → photo capture | Meta Ray-Ban, WhatsApp |
-| 2 | Vision API — label extraction | FastAPI, Gemini Vision |
-| 3 | Backend orchestrator | FastAPI, Twilio, SQLite |
-| 4 | ElderAgent + PharmacyAgent | x402, ERC-8004, AgentKit |
-| 5 | Guardian Dashboard | React, Vite |
+## Services
 
-## Tech stack
+| Path | Role | Runtime |
+|------|------|---------|
+| [`backend/`](./backend) | WhatsApp webhook, patient-message handling, medication logs, refill/order requests | Python, FastAPI, Twilio, SQLite, Anthropic Claude, gTTS |
+| [`aegis-vision/`](./aegis-vision) | Medication-photo analysis API | Python, FastAPI, Anthropic Claude vision |
+| [`aegis-guardian/`](./aegis-guardian) | Caregiver dashboard frontend | React, Vite, Tailwind CSS, Framer Motion, Three.js |
 
-**Frontend:** React 19 · Vite · Tailwind CSS · Framer Motion · Three.js / Spline
-**Backend:** Python · FastAPI · Twilio · SQLite
-**AI:** Gemini Vision (medication-label extraction)
-**Web3:** x402 · ERC-8004 (on-chain agent identity) · GOAT Network · AgentKit
-**Platform:** OpenClaw · ClawUp · Meta Ray-Ban
+## Data Flow
 
-## Repo layout
+1. Twilio sends inbound WhatsApp messages to `POST /webhook/whatsapp`.
+2. Text messages are parsed into an action and spoken response.
+3. Photo messages receive an immediate TwiML acknowledgement, then process in a background task.
+4. The backend downloads the image and posts it to `aegis-vision`.
+5. The vision service returns medication, dosage, quantity, refill need, and confidence.
+6. The backend records medication logs, alerts, interactions, and order requests in SQLite.
+7. Refill requests use `ORDER_AGENT_MODE=mock` by default. Live GOAT testnet payment only runs when explicitly configured.
 
-| Path | Description |
-|------|-------------|
-| [`aegis-guardian/`](./aegis-guardian) | Guardian Dashboard — the deployed React/Vite frontend |
-| [`aegis-vision/`](./aegis-vision) | Vision API — FastAPI service that reads pill-bottle photos |
-| [`backend/`](./backend) | Orchestrator — FastAPI + Twilio WhatsApp + SQLite |
+## API Surface
 
-## Run the frontend locally
+Backend:
+
+- `GET /health`
+- `POST /webhook/whatsapp`
+- `GET /api/stats`
+- `GET /api/recent-meds`
+- `GET /api/interactions`
+- `GET /api/order-requests`
+- `GET /api/payments`
+
+Vision:
+
+- `GET /health`
+- `POST /analyze`
+- `POST /analyze-base64`
+
+Frontend:
+
+- `/`
+- `/dashboard`
+- `/dashboard/transactions/:id`
+- `/how-it-works`
+- `/help`
+- `/privacy`
+- `/contact`
+
+## Run locally
+
+```bash
+./setup.sh
+cp backend/.env.example backend/.env
+cp aegis-vision/.env.example aegis-vision/.env
+./run_all.sh
+```
+
+Backend: http://127.0.0.1:8000
+
+Vision: http://127.0.0.1:5001
+
+## Environment
+
+Copy the example env files before using live integrations:
+
+```bash
+cp backend/.env.example backend/.env
+cp aegis-vision/.env.example aegis-vision/.env
+```
+
+Key backend settings:
+
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
+- `ANTHROPIC_API_KEY`
+- `VISION_SERVICE_URL=http://127.0.0.1:5001`
+- `PUBLIC_BASE_URL`
+- `ORDER_AGENT_MODE=mock`
+- `DATABASE_URL=sqlite:///./data/aegis.db`
+
+Key vision settings:
+
+- `ANTHROPIC_API_KEY`
+- `VISION_PORT=5001`
+- `BACKEND_URL` optional forwarding target
+
+## Frontend
 
 ```bash
 cd aegis-guardian
@@ -68,8 +122,18 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Deployed on Vercel (root directory `aegis-guardian`); every push to `main` auto-deploys.
+Build and lint:
 
----
+```bash
+npm run build
+npm run lint
+```
 
-<sub>Built at OpenClaw Hackathon · Toronto Tech Week 2026.</sub>
+The Vercel project deploys from `aegis-guardian/` and serves the public alias at `https://aegis-guardian-ai.vercel.app`.
+
+## Safety Defaults
+
+- The order agent defaults to mock mode.
+- Live GOAT payment requires explicit wallet, RPC, and pharmacy wallet configuration.
+- Vision failures return a deterministic fallback medication result instead of breaking the demo path.
+- Real Twilio, Anthropic, wallet, and RPC credentials belong only in local `.env` files.

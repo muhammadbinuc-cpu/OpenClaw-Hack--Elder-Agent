@@ -8,7 +8,7 @@ import base64
 import io
 import httpx
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5001"
 
 
 def make_test_image_bytes() -> bytes:
