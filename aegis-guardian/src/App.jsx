@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
 import Landing from './pages/Landing'
+import Cinematic from './pages/Cinematic'
 import Dashboard from './pages/Dashboard'
 import HowItWorks from './pages/HowItWorks'
 import Help from './pages/Help'
@@ -13,7 +14,8 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Cinematic />} />
+          <Route path="/classic" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/transactions/:id" element={<TransactionDetail />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
